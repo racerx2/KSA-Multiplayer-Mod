@@ -187,14 +187,13 @@ The mod DLL is self-contained - it only needs the game's existing DLLs and the M
 
 ## Usage
 
-### Quick Start
+### Getting Started
 1. Launch KSA using the "KSA with Mods" desktop shortcut
-2. Press `~` to open the console
-3. Type `mp_ui` and press Enter
-
-The Multiplayer window will appear:
+2. The Multiplayer window appears automatically
 
 ![Multiplayer UI](screenshot_multiplayer_ui.png)
+
+**Note:** If hosting, ensure the port (default: 7777) is forwarded in your router.
 
 ### Hosting a Game
 1. Enter your desired **Port** (default: 7777)
