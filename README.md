@@ -80,17 +80,70 @@ For custom KSA paths:
 ## Building from Source
 
 ### Prerequisites
-1. Install .NET 10 SDK (or .NET 9)
-2. Install Kitten Space Agency to `C:\Program Files\Kitten Space Agency` (or update paths in `.csproj`)
+
+1. **.NET 10 SDK** - [Download here](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+   - Select "SDK" (not Runtime) for your platform
+   - Verify installation: `dotnet --version` should show `10.x.x`
+
+2. **Kitten Space Agency** installed
+   - The project references DLLs directly from the KSA installation
+   - Default expected path: `C:\Program Files\Kitten Space Agency`
+
+### Dependencies
+
+The project uses two types of dependencies:
+
+#### NuGet Packages (Automatic)
+These are downloaded automatically during `dotnet restore`:
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `Lib.Harmony` | 2.4.2 | Runtime method patching - outputs `0Harmony.dll` |
+| `MemoryPack.Generator` | 1.21.3 | Source generator for binary serialization (compile-time only, no runtime DLL) |
+
+#### KSA Assembly References (From Game Installation)
+The project references these DLLs directly from your KSA installation. They are **not** copied to the output (set as `Private=false`):
+
+| Assembly | Purpose |
+|----------|---------|
+| `KSA.dll` | Core game API |
+| `Planet.Core.dll` | Planet/orbital mechanics |
+| `Planet.Render.Core.dll` | Rendering systems |
+| `Brutal.Framework.dll` | Game framework core |
+| `Brutal.ImGui.dll` | UI system |
+| `Brutal.ImGui.Abstractions.dll` | UI interfaces |
+| `Brutal.ImGui.Extensions.dll` | UI extensions |
+| `Brutal.RakNet.dll` | Networking (RakNet wrapper) |
+| `Brutal.Core.Common.dll` | Common utilities |
+| `Brutal.Core.Logging.dll` | Logging system |
+| `Brutal.Core.Numerics.dll` | Math types (vectors, matrices) |
+| `Brutal.Core.Strings.dll` | String utilities |
+| `Tomlet.dll` | TOML parsing (mod configuration) |
+| `MemoryPack.Core.dll` | Binary serialization runtime |
 
 ### Build Steps
+
+#### Standard Build
 ```powershell
 cd KSA-Multiplayer-Mod
-dotnet restore
+dotnet restore    # Downloads NuGet packages
 dotnet build --configuration Release
 ```
 
 Output: `bin\Release\KSA.Mods.Multiplayer.dll`
+
+#### If KSA Is Installed in a Non-Default Location
+If KSA is not at `C:\Program Files\Kitten Space Agency`, you must update the `HintPath` entries in `KSA-Multiplayer-Mod.csproj`:
+
+```xml
+<!-- Change all occurrences of: -->
+<HintPath>C:\Program Files\Kitten Space Agency\KSA.dll</HintPath>
+
+<!-- To your actual path: -->
+<HintPath>D:\Games\KSA\KSA.dll</HintPath>
+```
+
+There are 14 references to update. You can use find/replace in your editor.
 
 ### Build and Deploy (Development)
 ```powershell
@@ -98,19 +151,39 @@ Output: `bin\Release\KSA.Mods.Multiplayer.dll`
 ```
 
 This script:
-1. Cleans and builds in Release configuration
-2. Copies the DLL to your KSA installation
-3. Copies the DLL to the Package folder
-4. Creates a desktop shortcut
+1. Cleans previous build artifacts
+2. Builds in Release configuration
+3. Copies the DLL to your KSA installation (`Content\Multiplayer\`)
+4. Copies the DLL to the Package folder (for distribution)
+5. Creates a "KSA with Mods" desktop shortcut
+
+**Note:** The script assumes KSA is at `C:\Program Files\Kitten Space Agency`. Edit the script if your path differs.
 
 ### Building the Installer
-Requires [NSIS](https://nsis.sourceforge.io/) installed:
+
+Requires [NSIS](https://nsis.sourceforge.io/) (Nullsoft Scriptable Install System):
+
+1. Download and install NSIS from https://nsis.sourceforge.io/
+2. Ensure `makensis` is in your PATH, or use the full path
+3. Build:
+
 ```batch
 cd KSA-Multiplayer-Package
 makensis installer.nsi
 ```
 
 Output: `KSA-Multiplayer-Setup.exe`
+
+### Build Output Summary
+
+After a successful build, you'll have:
+
+| File | Location | Purpose |
+|------|----------|---------|
+| `KSA.Mods.Multiplayer.dll` | `bin\Release\` | The mod DLL (only file needed at runtime) |
+| `0Harmony.dll` | NuGet cache | Already bundled in `KSA-Multiplayer-Package\Launcher\` |
+
+The mod DLL is self-contained - it only needs the game's existing DLLs and the ModLoader (which includes Harmony).
 
 ## Usage
 
@@ -181,12 +254,18 @@ When debug logging is enabled, logs are written to:
 
 Log files include: TimeSync, Subspace, Sync, Players, Network, Vehicles, Events, Renderer, Patches, NameTags
 
-## Dependencies
+## Third-Party Libraries
 
-| Dependency | Version | License | Purpose |
-|------------|---------|---------|---------|
-| [Harmony](https://github.com/pardeike/Harmony) | 2.4.2 | MIT | Runtime method patching |
-| [MemoryPack](https://github.com/Cysharp/MemoryPack) | 1.21.3 | MIT | Binary serialization |
+These open-source libraries are used by the mod:
+
+| Library | Version | License | Notes |
+|---------|---------|---------|-------|
+| [Harmony](https://github.com/pardeike/Harmony) | 2.4.2 | MIT | Bundled in `Launcher/0Harmony.dll` |
+| [MemoryPack](https://github.com/Cysharp/MemoryPack) | 1.21.3 | MIT | Runtime DLL ships with KSA |
+
+**For end users:** No separate installation required. Harmony is bundled with the installer, and MemoryPack is already part of KSA.
+
+**For developers:** See [Building from Source](#building-from-source) for how these are acquired during build.
 
 ## Troubleshooting
 
