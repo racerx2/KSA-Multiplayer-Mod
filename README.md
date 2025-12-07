@@ -190,19 +190,30 @@ The mod DLL is self-contained - it only needs the game's existing DLLs and the M
 ### Quick Start
 1. Launch KSA using the "KSA with Mods" desktop shortcut
 2. Press `~` to open the console
-3. Type `mp_ui` to open the Multiplayer window
+3. Type `mp_ui` and press Enter
+
+The Multiplayer window will appear:
+
+![Multiplayer UI](screenshot_multiplayer_ui.png)
 
 ### Hosting a Game
-```
-mp_host <playerName> <port> <maxPlayers>
-```
-Example: `mp_host RacerX 7777 8`
+1. Enter your desired **Port** (default: 7777)
+2. Enter your **Name**
+3. Click **Host**
+
+Your local IP address will be shown - give this to players who want to join.
 
 ### Joining a Game
-```
-mp_join <playerName> <serverIP> <port>
-```
-Example: `mp_join Player2 192.168.1.100 7777`
+1. Enter the host's **Server IP** address
+2. Enter the **Port** (must match host's port)
+3. Enter your **Name**
+4. Click **Join**
+
+### The Multiplayer Window
+- **Status indicator** - Green "CONNECTED" when online, shows HOST or CLIENT
+- **Players list** - Shows all connected players with sync status icons
+- **Chat** - Type messages and click Send (or press Enter)
+- **Time Sync** - Shows your current simulation time; use the dropdown to sync with other players
 
 ### Important: System Matching
 **All players must select the same solar system at game startup:**
@@ -212,7 +223,8 @@ Example: `mp_join Player2 192.168.1.100 7777`
 
 If systems don't match, the connection will be refused.
 
-### Console Commands
+### Console Commands (Advanced)
+For users who prefer the console, these commands are also available:
 | Command | Description |
 |---------|-------------|
 | `mp_ui` | Toggle multiplayer UI window |
