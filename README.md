@@ -200,7 +200,9 @@ The mod DLL is self-contained - it only needs the game's existing DLLs and the M
 2. Enter your **Name**
 3. Click **Host**
 
-Your local IP address will be shown - give this to players who want to join.
+To let others join:
+- **LAN players:** Give them the IP shown in the window (e.g., 10.0.0.93)
+- **Internet players:** Give them your public IP (find it at [whatismyip.com](https://whatismyip.com)) and ensure the port is forwarded in your router
 
 ### Joining a Game
 1. Enter the host's **Server IP** address
