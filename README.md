@@ -280,6 +280,10 @@ These open-source libraries are used by the mod:
 
 **For developers:** See [Building from Source](#building-from-source) for how these are acquired during build.
 
+## Disclaimer
+
+**Mod Compatibility:** This multiplayer mod has not been tested with other KSA mods. Behavior when running alongside other mods is unknown and may cause issues. For the best experience, we recommend running the multiplayer mod without other mods installed.
+
 ## Troubleshooting
 
 | Issue | Solution |
