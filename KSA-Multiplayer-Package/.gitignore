@@ -1,0 +1,6 @@
+# Built artifacts - upload these to GitHub Releases instead
+KSA-Multiplayer-Setup.exe
+Content/Multiplayer/KSA.Mods.Multiplayer.dll
+
+# Build outputs
+*.pdb

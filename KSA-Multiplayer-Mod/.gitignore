@@ -1,0 +1,35 @@
+# Build outputs
+bin/
+obj/
+
+# IDE and editor files
+.vs/
+.vscode/
+*.user
+*.suo
+*.csproj.user
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Local settings
+*.local.toml
+
+# NuGet
+packages/
+*.nupkg
+
+# Temporary files
+*.tmp
+*.bak
+
+# Development notes (not for repository)
+archive/
+todo.txt
+*.txt
+!README.txt
