@@ -305,6 +305,8 @@ MIT License - see [LICENSE](KSA-Multiplayer-Mod/LICENSE)
 
 ## Version
 
-Current: **v0.1.0**
+Current: **v0.1.1**
 
 See [CHANGELOG](KSA-Multiplayer-Mod/CHANGELOG.md) for version history.
+Thanks go out to Darklight and Dagger for inspiring me with KSP multiplayer, DMP and LMP, all those years ago! 
+And of course thanks to the KSA dev team and RocketWerkz for making KSA "May it live forever"
