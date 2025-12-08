@@ -58,7 +58,7 @@ KSA-Multiplayer-Mod/
 - **Windows** (x64)
 
 ### For Developers (Building from Source)
-- **.NET 10 SDK** (or .NET 9 SDK)
+- **.NET 10 SDK** (or .NET 10 SDK)
 - **Kitten Space Agency** installed (for assembly references)
 - **NSIS** (optional, for building the installer executable)
 
