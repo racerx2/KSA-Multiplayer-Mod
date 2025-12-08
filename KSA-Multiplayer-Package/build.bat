@@ -6,7 +6,7 @@ echo   KSA Multiplayer Mod - Build ^& Package
 echo ========================================
 echo.
 
-set "MOD_PATH=C:\temp\KSA-Multiplayer-Mod"
+set "MOD_PATH=C:\temp\KSA-Multiplayer\KSA-Multiplayer-Mod"
 set "MODLOADER_PATH=C:\temp\KSA-ModLoader"
 set "PACKAGE_PATH=%~dp0"
 
