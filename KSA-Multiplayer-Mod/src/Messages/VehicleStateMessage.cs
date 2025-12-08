@@ -64,6 +64,13 @@ namespace KSA.Mods.Multiplayer.Messages
         /// KSA Situation: 0=Freefall, 1=Maneuvering, 2=Rolling, 3=Landed, 4=Sailing, 5=Floating
         /// </summary>
         public byte Situation { get; set; }
+        
+        /// <summary>
+        /// KSA VehicleRegion: 0=Surface (atmosphere/near-surface), 1=LowOrbit, 2=HighOrbit
+        /// When Surface, receiver should enable physics simulation for atmospheric drag.
+        /// </summary>
+        public byte VehicleRegion { get; set; }
+        
         public uint SequenceNumber { get; set; }
         
         // Rocket thrust states for visual sync

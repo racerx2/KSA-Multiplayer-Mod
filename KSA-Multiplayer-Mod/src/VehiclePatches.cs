@@ -15,6 +15,14 @@ namespace KSA.Mods.Multiplayer
         private static readonly HashSet<string> _remoteVehicleIds = new HashSet<string>();
         private static readonly HashSet<Vehicle> _remoteVehicles = new HashSet<Vehicle>();
         private static readonly Dictionary<string, string> _vehicleOwners = new Dictionary<string, string>(); // VehicleId -> OwnerPlayerName
+        
+        /// <summary>
+        /// Physics mode tracking for remote vehicles.
+        /// Key is the vehicle key (ownerName_vehicleId), value is true if physics simulation is enabled.
+        /// When true, KSA physics runs (atmospheric drag, gravity). When false, Kepler propagation only.
+        /// </summary>
+        private static readonly Dictionary<string, bool> _physicsMode = new Dictionary<string, bool>();
+        
         private const string LogName = "Patches";
         
         // Reference to SubspaceManager for visibility checks
@@ -163,29 +171,85 @@ namespace KSA.Mods.Multiplayer
             _remoteVehicleIds.Clear();
             _remoteVehicles.Clear();
             _vehicleOwners.Clear();
+            _physicsMode.Clear();
         }
         
         /// <summary>
-        /// Skip physics for remote vehicles - let Kepler handle smooth motion
+        /// Set physics mode for a remote vehicle.
+        /// When true, KSA physics simulation runs (atmospheric drag, gravity, buoyancy).
+        /// When false, only Kepler orbital propagation runs (vacuum flight).
+        /// </summary>
+        /// <param name="vehicleKey">The vehicle key (ownerName_vehicleId)</param>
+        /// <param name="enabled">True to enable physics (atmosphere), false for Kepler only (vacuum)</param>
+        public static void SetPhysicsMode(string vehicleKey, bool enabled)
+        {
+            bool previousMode = _physicsMode.GetValueOrDefault(vehicleKey, false);
+            _physicsMode[vehicleKey] = enabled;
+            
+            if (previousMode != enabled)
+            {
+                Log($"PHYSICS MODE [{vehicleKey}]: {(enabled ? "ENABLED (atmosphere)" : "DISABLED (vacuum)")}");
+            }
+        }
+        
+        /// <summary>
+        /// Check if a remote vehicle is in physics mode (atmosphere simulation).
+        /// </summary>
+        /// <param name="vehicleKey">The vehicle key (ownerName_vehicleId)</param>
+        /// <returns>True if physics mode is enabled (atmosphere), false for Kepler only (vacuum)</returns>
+        public static bool IsInPhysicsMode(string vehicleKey)
+        {
+            return _physicsMode.GetValueOrDefault(vehicleKey, false);
+        }
+        
+        /// <summary>
+        /// Get the vehicle key for a remote vehicle.
+        /// </summary>
+        public static string? GetVehicleKey(Vehicle vehicle)
+        {
+            if (vehicle == null) return null;
+            string? owner = GetVehicleOwner(vehicle.Id);
+            if (string.IsNullOrEmpty(owner)) return null;
+            return $"{owner}_{vehicle.Id}";
+        }
+        
+        /// <summary>
+        /// Control physics simulation for remote vehicles.
+        /// Physics mode ON (atmosphere): Let KSA simulate drag, gravity, buoyancy
+        /// Physics mode OFF (vacuum): Use Kepler propagation with zero controls
         /// </summary>
         public static bool PrepareWorkerPrefix(Vehicle __instance, VehicleUpdateTask updateTask)
         {
             if (IsRemoteVehicle(__instance))
             {
-                // Let physics run with zero controls - no thrust, no RCS
-                // This allows Kepler propagation to smoothly update position every frame
-                ManualControlInputs zeroInputs = new ManualControlInputs();
-                updateTask.AddVehicle(__instance, false, zeroInputs, __instance.FlightComputer);
-                __instance.UpdateTask = updateTask;
-                return false;
+                // Check if this remote vehicle is in physics mode (atmospheric flight)
+                string? vehicleKey = GetVehicleKey(__instance);
+                bool inPhysicsMode = vehicleKey != null && IsInPhysicsMode(vehicleKey);
+                
+                if (inPhysicsMode)
+                {
+                    // PHYSICS MODE: Let KSA simulate drag, gravity, buoyancy
+                    // Run physics with zero controls - the physics engine handles atmospheric effects
+                    // We'll apply position corrections via network updates
+                    return true;
+                }
+                else
+                {
+                    // KEPLER MODE: Vacuum orbital propagation
+                    // Let Kepler handle smooth position updates every frame
+                    ManualControlInputs zeroInputs = new ManualControlInputs();
+                    updateTask.AddVehicle(__instance, false, zeroInputs, __instance.FlightComputer);
+                    __instance.UpdateTask = updateTask;
+                    return false;
+                }
             }
             return true;
         }
         
         /// <summary>
-        /// Skip PopulateAnalyticStatesFromKinematicStates for remote vehicles.
-        /// This prevents the "outdated kinematic states" error caused by us updating
-        /// the orbit externally via network while physics expects to control the state.
+        /// Control analytic state population for remote vehicles.
+        /// Physics mode ON: Let physics update kinematic states normally
+        /// Physics mode OFF: Skip - we control orbit via network
         /// </summary>
         public static bool PopulateAnalyticStatesPrefix(object vehicleState)
         {
@@ -199,8 +263,20 @@ namespace KSA.Mods.Multiplayer
                     Vehicle? vehicle = vehicleField.GetValue(vehicleState) as Vehicle;
                     if (vehicle != null && IsRemoteVehicle(vehicle))
                     {
-                        // Skip this method for remote vehicles - we update orbit via network
-                        return false;
+                        // Check if in physics mode
+                        string? vehicleKey = GetVehicleKey(vehicle);
+                        bool inPhysicsMode = vehicleKey != null && IsInPhysicsMode(vehicleKey);
+                        
+                        if (inPhysicsMode)
+                        {
+                            // PHYSICS MODE: Let physics update states normally
+                            return true;
+                        }
+                        else
+                        {
+                            // KEPLER MODE: Skip - we update orbit via network
+                            return false;
+                        }
                     }
                 }
             }

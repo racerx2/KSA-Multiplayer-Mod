@@ -7,7 +7,7 @@ namespace KSA.Mods.Multiplayer
     public static class ModInfo
     {
         public const string Name = "KSA Multiplayer Mod";
-        public const string Version = "0.1.0";
+        public const string Version = "0.1.1";
         public const string Author = "RacerX";
         public const string GitHubUrl = "https://github.com/racerx2/KSA-Multiplayer-Mod";
         

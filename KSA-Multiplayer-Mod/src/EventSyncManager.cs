@@ -33,6 +33,7 @@ namespace KSA.Mods.Multiplayer
         private bool _initialStateSent = false;
         private int _eventCount = 0;
         private double _prevSimulationSpeed = 1.0;
+        private byte _prevVehicleRegion = 255; // Invalid initial value to force first detection
         
         // Vessel switching detection
         private string? _lastControlledVehicleId = null;
@@ -41,6 +42,10 @@ namespace KSA.Mods.Multiplayer
         private readonly HashSet<string> _ownedVehicleIds = new HashSet<string>();
         private double _lastOwnedVehicleSyncTime = 0;
         private const double OwnedVehicleSyncInterval = 5.0; // Sync owned but non-controlled vehicles every 5 seconds
+        
+        // Atmospheric flight periodic sync (prevents stale data during steady descent)
+        private double _lastAtmosphericSyncTime = 0;
+        private const double AtmosphericSyncInterval = 0.5; // Force sync every 0.5s during atmospheric flight
         
         // Reflection for accessing private ManualControlInputs
         private static readonly FieldInfo? _controlInputsField = typeof(Vehicle).GetField("_manualControlInputs", 
@@ -165,6 +170,10 @@ namespace KSA.Mods.Multiplayer
             double currentSimSpeed = Universe.SimulationSpeed;
             bool warpEnded = (_prevSimulationSpeed > 1.5 && currentSimSpeed <= 1.5);
             
+            // Detect VehicleRegion change (atmosphere entry/exit)
+            byte currentVehicleRegion = (byte)vehicle.VehicleRegion;
+            bool regionChanged = (currentVehicleRegion != _prevVehicleRegion);
+            
             if (!_initialStateSent)
             {
                 shouldSend = true;
@@ -175,6 +184,15 @@ namespace KSA.Mods.Multiplayer
                 // Player just exited time warp - broadcast new position/time
                 shouldSend = true;
                 eventReason = $"WARP_ENDED: Speed {_prevSimulationSpeed:F1}x -> {currentSimSpeed:F1}x";
+            }
+            else if (regionChanged)
+            {
+                // VehicleRegion changed - atmosphere entry/exit triggers physics mode change
+                shouldSend = true;
+                string[] regionNames = { "Surface", "LowOrbit", "HighOrbit" };
+                string prevName = _prevVehicleRegion < regionNames.Length ? regionNames[_prevVehicleRegion] : "Unknown";
+                string currName = currentVehicleRegion < regionNames.Length ? regionNames[currentVehicleRegion] : "Unknown";
+                eventReason = $"REGION_CHANGED: {prevName} -> {currName}";
             }
             else if (inputStateChanged)
             {
@@ -187,9 +205,18 @@ namespace KSA.Mods.Multiplayer
                 shouldSend = true;
                 eventReason = $"MANEUVERING: VelChange={velChangeRate:F2}m/s²";
             }
+            else if (currentVehicleRegion == 0 && (currentTime - _lastAtmosphericSyncTime) >= AtmosphericSyncInterval)
+            {
+                // Periodic sync during atmospheric flight (VehicleRegion.Surface = 0)
+                // This prevents stale data during steady descent when velocity change is below threshold
+                shouldSend = true;
+                eventReason = $"ATMOSPHERIC_PERIODIC: VelChange={velChangeRate:F2}m/s²";
+                _lastAtmosphericSyncTime = currentTime;
+            }
             
             // Update previous simulation speed
             _prevSimulationSpeed = currentSimSpeed;
+            _prevVehicleRegion = currentVehicleRegion;
             
             if (shouldSend)
             {
@@ -199,6 +226,12 @@ namespace KSA.Mods.Multiplayer
                 _lastSentVelocity = currentVel;
                 _lastEventTime = currentTime;
                 _initialStateSent = true;
+                
+                // Reset atmospheric sync timer whenever we send during atmospheric flight
+                if (currentVehicleRegion == 0)
+                {
+                    _lastAtmosphericSyncTime = currentTime;
+                }
             }
             
             // Update previous state
@@ -320,7 +353,9 @@ namespace KSA.Mods.Multiplayer
                     body2Frame = doubleQuat.Concatenate(body2Cci, cci2Ccf);
                 }
                 
-                Log($"SURFACE STATE: Sit={situation}, PhysFrame={physFrame}, PosCCF=({positionCcf.X:F0},{positionCcf.Y:F0},{positionCcf.Z:F0})");
+                // Throttle high-frequency surface state logging
+                ModLogger.LogThrottled(LogName, "SURFACE_STATE",
+                    $"SURFACE STATE: Sit={situation}, PhysFrame={physFrame}, PosCCF=({positionCcf.X:F0},{positionCcf.Y:F0},{positionCcf.Z:F0})");
             }
             else
             {
@@ -388,13 +423,19 @@ namespace KSA.Mods.Multiplayer
                 ThrusterFlags = thrusterFlags,
                 IsManeuvering = isManeuvering,
                 Situation = situation,
+                VehicleRegion = (byte)vehicle.VehicleRegion,
                 SequenceNumber = ++_sequenceNumber,
                 RocketThrusts = rocketThrusts
             };
             
             _networkManager.SendMessageToAll(msg);
             string frameStr = isSurfaceContact ? "CCF" : "CCI";
-            Log($"SENT STATE [{frameStr}] - Seq:{msg.SequenceNumber}, Sit={situation}, T={stateTime:F3}s");
+            string[] regionNames = { "Surface", "LowOrbit", "HighOrbit" };
+            string regionStr = msg.VehicleRegion < regionNames.Length ? regionNames[msg.VehicleRegion] : "?";
+            
+            // Throttle high-frequency sent state logging
+            ModLogger.LogThrottled(LogName, "SENT_STATE",
+                $"SENT STATE [{frameStr}] - Seq:{msg.SequenceNumber}, Sit={situation}, Region={regionStr}, T={stateTime:F3}s");
         }
 
         private void OnVehicleStateReceived(VehicleStateMessage msg)
@@ -406,7 +447,9 @@ namespace KSA.Mods.Multiplayer
             bool isSurface = msg.Situation >= 2;
             string frameStr = isSurface ? "CCF" : "CCI";
             
-            Log($"STATE RECEIVED [{frameStr}] - Key: {key}, Sit={msg.Situation}, PhysFrame={msg.PhysFrame}, T={msg.StateTimeSeconds:F3}s");
+            // Throttle high-frequency state received logging
+            ModLogger.LogThrottled(LogName, "STATE_RECV", 
+                $"STATE RECEIVED [{frameStr}] - Key: {key}, Sit={msg.Situation}, PhysFrame={msg.PhysFrame}, T={msg.StateTimeSeconds:F3}s");
             
             // Update player's time in SubspaceManager for visibility checks
             if (_subspaceManager != null && !string.IsNullOrEmpty(msg.OwnerPlayerName))
@@ -446,6 +489,20 @@ namespace KSA.Mods.Multiplayer
                 Log($"SITUATION CHANGE [{key}]: {v.LastSituation} -> {msg.Situation}");
                 v.SituationChanged = true;
                 v.LastSituation = msg.Situation;
+            }
+            
+            // Detect VehicleRegion change - this triggers physics mode switch
+            if (msg.VehicleRegion != v.LastVehicleRegion)
+            {
+                string[] regionNames = { "Surface", "LowOrbit", "HighOrbit" };
+                string prevName = v.LastVehicleRegion < regionNames.Length ? regionNames[v.LastVehicleRegion] : "Unknown";
+                string currName = msg.VehicleRegion < regionNames.Length ? regionNames[msg.VehicleRegion] : "Unknown";
+                Log($"VEHICLE REGION CHANGE [{key}]: {prevName} -> {currName} - PHYSICS MODE: {(msg.VehicleRegion == 0 ? "ENABLED" : "DISABLED")}");
+                v.VehicleRegionChanged = true;
+                v.LastVehicleRegion = msg.VehicleRegion;
+                
+                // Update physics mode for this remote vehicle
+                VehiclePatches.SetPhysicsMode(key, msg.VehicleRegion == 0); // Surface = physics enabled
             }
             
             if (!v.HasCurrentState)
@@ -597,6 +654,8 @@ namespace KSA.Mods.Multiplayer
             public float[] RocketThrusts { get; set; } = Array.Empty<float>();
             public byte LastSituation { get; set; } = 255; // Invalid initial value to force first update
             public bool SituationChanged { get; set; } = true; // Start true so first state triggers orbit set
+            public byte LastVehicleRegion { get; set; } = 255; // Invalid initial value
+            public bool VehicleRegionChanged { get; set; } = true; // Start true so first state triggers physics mode check
         }
     }
 }

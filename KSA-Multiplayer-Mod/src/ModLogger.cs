@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
@@ -28,6 +29,12 @@ namespace KSA.Mods.Multiplayer
         private static readonly object _lock = new object();
         private static double _lastHeartbeatTime = 0;
         private const double HEARTBEAT_INTERVAL = 5.0; // seconds
+        
+        // Throttling for high-frequency logs
+        private static readonly Dictionary<string, int> _messageCounters = new Dictionary<string, int>();
+        private static readonly Dictionary<string, DateTime> _lastLogTimes = new Dictionary<string, DateTime>();
+        private const int THROTTLE_EVERY_N = 100; // Log every Nth message for throttled categories
+        private const double THROTTLE_MIN_INTERVAL_MS = 1000; // Or at least once per second
         
         /// <summary>
         /// Gets or sets the player name used in log filenames.
@@ -132,6 +139,66 @@ namespace KSA.Mods.Multiplayer
                 File.AppendAllText(logPath, timestampedMessage);
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Throttled logging - only logs every Nth message or at minimum interval.
+        /// Use for high-frequency messages like per-frame network traffic.
+        /// </summary>
+        /// <param name="logName">Log file category</param>
+        /// <param name="throttleKey">Unique key for throttling (e.g., "STATE_RECV")</param>
+        /// <param name="message">Message to log</param>
+        /// <param name="forceLog">If true, bypasses throttling</param>
+        public static void LogThrottled(string logName, string throttleKey, string message, bool forceLog = false)
+        {
+            if (!MultiplayerSettings.Current.EnableDebugLogging)
+                return;
+            
+            string fullKey = $"{logName}_{throttleKey}";
+            DateTime now = DateTime.Now;
+            
+            lock (_lock)
+            {
+                // Get or initialize counter
+                if (!_messageCounters.TryGetValue(fullKey, out int count))
+                {
+                    count = 0;
+                    _lastLogTimes[fullKey] = now;
+                }
+                
+                count++;
+                _messageCounters[fullKey] = count;
+                
+                // Check if we should log
+                bool shouldLog = forceLog;
+                
+                if (!shouldLog && count >= THROTTLE_EVERY_N)
+                {
+                    shouldLog = true;
+                    _messageCounters[fullKey] = 0;
+                }
+                
+                if (!shouldLog && _lastLogTimes.TryGetValue(fullKey, out DateTime lastTime))
+                {
+                    if ((now - lastTime).TotalMilliseconds >= THROTTLE_MIN_INTERVAL_MS)
+                    {
+                        shouldLog = true;
+                    }
+                }
+                
+                if (shouldLog)
+                {
+                    _lastLogTimes[fullKey] = now;
+                    try
+                    {
+                        string logPath = GetLogPath(logName);
+                        string throttleInfo = forceLog ? "" : $" (#{count})";
+                        string timestampedMessage = $"[{now:HH:mm:ss.fff}]{throttleInfo} {message}\n";
+                        File.AppendAllText(logPath, timestampedMessage);
+                    }
+                    catch { }
+                }
+            }
         }
 
         /// <summary>

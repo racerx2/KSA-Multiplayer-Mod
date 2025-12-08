@@ -1,8 +1,8 @@
 # KSA Multiplayer Mod Configuration
 
 name = "Multiplayer"
-version = "1.0.0"
-author = "KSA Modding Community"
+version = "0.1.1"
+author = "RacerX"
 description = "Multiplayer support for Kitten Space Agency"
 
 # Assembly to load

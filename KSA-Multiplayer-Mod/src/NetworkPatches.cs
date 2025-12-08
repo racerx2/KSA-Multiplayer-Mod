@@ -82,13 +82,9 @@ namespace KSA.Mods.Multiplayer
         {
             byte messageId = (byte)packet.MessageId;
             
-            // Log ALL incoming messages to help debug
+            // Throttle high-frequency deserialize logging (only for mod messages)
             if (messageId >= 140)
-                Log($"DESERIALIZE: MessageId={messageId}");
-            
-            // Log ALL incoming messages to help debug
-            if (messageId >= 140)
-                Log($"DESERIALIZE: MessageId={messageId}");
+                ModLogger.LogThrottled(LogName, "DESERIALIZE", $"DESERIALIZE: MessageId={messageId}");
             
             switch (messageId)
             {
@@ -109,11 +105,13 @@ namespace KSA.Mods.Multiplayer
                     if (stateMessage != null)
                     {
                         stateMessage.Id = (GameMessageId)MSG_ID_VEHICLE_STATE;
-                        Log($"STATE MSG - Owner: {stateMessage.OwnerPlayerName}, Engine: {stateMessage.EngineOn}, Throttle: {stateMessage.EngineThrottle:F2}, RCS: {stateMessage.ThrusterFlags}");
+                        // Throttle high-frequency state message logging
+                        ModLogger.LogThrottled(LogName, "STATE_MSG", 
+                            $"STATE MSG - Owner: {stateMessage.OwnerPlayerName}, Engine: {stateMessage.EngineOn}, Throttle: {stateMessage.EngineThrottle:F2}, RCS: {stateMessage.ThrusterFlags}");
                         OnVehicleStateReceived?.Invoke(stateMessage);
                         if (Network.ActivePeer is NetworkServer)
                         {
-                            Log($"STATE MSG RELAY - Server relaying to all");
+                            ModLogger.LogThrottled(LogName, "STATE_RELAY", "STATE MSG RELAY - Server relaying to all");
                             Network.ActivePeer.DispatchToAllPlayers(stateMessage);
                         }
                     }
