@@ -1,0 +1,104 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>KSA.Mods.Multiplayer</RootNamespace>
+    <AssemblyName>KSA.Mods.Multiplayer</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <!-- Exclude archive folder from compilation -->
+  <ItemGroup>
+    <Compile Remove="archive\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NuGet Packages -->
+    <PackageReference Include="Lib.Harmony" Version="2.4.2" />
+    <PackageReference Include="MemoryPack.Generator" Version="1.21.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- KSA Core References -->
+    <Reference Include="KSA">
+      <HintPath>C:\Program Files\Kitten Space Agency\KSA.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Planet.Core">
+      <HintPath>C:\Program Files\Kitten Space Agency\Planet.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Planet.Render.Core">
+      <HintPath>C:\Program Files\Kitten Space Agency\Planet.Render.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- Brutal Framework References -->
+    <Reference Include="Brutal.Framework">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.Framework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Brutal.ImGui">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.ImGui.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Brutal.ImGui.Abstractions">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.ImGui.Abstractions.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Brutal.ImGui.Extensions">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.ImGui.Extensions.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Brutal.RakNet">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.RakNet.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Brutal.Core.Common">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.Core.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Brutal.Core.Logging">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.Core.Logging.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Brutal.Numerics">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.Core.Numerics.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="Brutal.Core.Strings">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.Core.Strings.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <Reference Include="Tomlet">
+      <HintPath>C:\Program Files\Kitten Space Agency\Tomlet.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <Reference Include="MemoryPack.Core">
+      <HintPath>C:\Program Files\Kitten Space Agency\MemoryPack.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Message Text="Multiplayer mod compiled successfully!" Importance="high" />
+    <Message Text="Output: $(TargetPath)" Importance="high" />
+  </Target>
+
+</Project>

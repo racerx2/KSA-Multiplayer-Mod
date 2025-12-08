@@ -1,0 +1,53 @@
+# KSA Multiplayer Mod Configuration
+
+name = "Multiplayer"
+version = "1.0.0"
+author = "KSA Modding Community"
+description = "Multiplayer support for Kitten Space Agency"
+
+# Assembly to load
+assembly = "KSA.Mods.Multiplayer.dll"
+
+# Texture size caps (optional)
+textureSizeCaps = []
+
+# Shadow map sizes (optional)
+supportedShadowMaps = []
+
+# Cloud quality options (optional)
+supportedCloudQuality = []
+
+# Ocean simulation quality (optional)
+supportedOceanSimQuality = []
+
+# Exhaust quality options (optional)
+supportedExhaustQuality = []
+
+# Kitten fur quality (optional)
+supportedKittenFurQuality = []
+
+# Shadow slots (optional)
+supportedShadowSlots = []
+
+# Simulation speeds (optional)
+simulationSpeeds = []
+
+# Planet mesh collections (optional)
+planetMeshes = []
+
+# System templates (optional)
+systems = []
+
+# Asset bundles (optional)
+assets = []
+
+# Star binaries (optional)
+starBinaries = []
+
+# Fonts (optional)
+fonts = []
+
+# Console settings
+[console]
+onLoad = []
+onBoot = []
