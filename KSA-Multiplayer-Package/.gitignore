@@ -1,0 +1,12 @@
+# Built installer - upload to GitHub Releases
+KSA-Multiplayer-Setup.exe
+
+# Old release archives
+*.zip
+
+# Build outputs
+*.pdb
+
+# Old manual install scripts (replaced by NSIS installer)
+Install.bat
+Install.ps1

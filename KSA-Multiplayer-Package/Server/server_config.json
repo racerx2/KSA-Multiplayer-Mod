@@ -1,0 +1,10 @@
+{
+  "ServerName": "KSA Multiplayer Server",
+  "Port": 7777,
+  "MaxPlayers": 8,
+  "Password": "",
+  "SystemId": "Sol",
+  "SystemDisplayName": "Solar System",
+  "Motd": "Welcome to KSA Multiplayer!",
+  "BannedIPs": []
+}

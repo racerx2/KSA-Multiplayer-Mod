@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>KSA.Multiplayer.DedicatedServer</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- MemoryPack for message serialization (includes source generator) -->
+  <ItemGroup>
+    <PackageReference Include="MemoryPack" Version="1.21.4" />
+  </ItemGroup>
+
+  <!-- Reference KSA DLLs from game directory -->
+  <ItemGroup>
+    <Reference Include="KSA">
+      <HintPath>C:\Program Files\Kitten Space Agency\KSA.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Brutal.RakNet">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.RakNet.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Brutal.Core.Common">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.Core.Common.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Brutal.Core.Logging">
+      <HintPath>C:\Program Files\Kitten Space Agency\Brutal.Core.Logging.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="CommunityToolkit.HighPerformance">
+      <HintPath>C:\Program Files\Kitten Space Agency\CommunityToolkit.HighPerformance.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Copy native RakNet DLL to output -->
+  <ItemGroup>
+    <None Include="C:\Program Files\Kitten Space Agency\RakNetDLL.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>RakNetDLL.dll</Link>
+    </None>
+  </ItemGroup>
+
+</Project>

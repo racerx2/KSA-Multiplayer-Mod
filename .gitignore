@@ -1,0 +1,57 @@
+# Build outputs
+bin/
+obj/
+publish/
+
+# IDE and editor files
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.csproj.user
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+
+# Local settings and config
+*.local.toml
+server_config.json
+!KSA-Multiplayer-Package/Server/server_config.json
+
+# NuGet
+packages/
+*.nupkg
+nuget.config
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Development notes (not for repository)
+archive/
+todo.txt
+*.txt
+!README.txt
+
+# Conversation logs / AI transcripts
+*conversation*.txt
+*transcript*.txt
+
+# Server deploy folder (built binaries for distribution)
+Server_Deploy/
+
+# Test/debug files
+test/
+debug/
+
+# Reference code (not part of distribution)
+3014REFERENCECODE/
