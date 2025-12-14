@@ -1,5 +1,7 @@
 # KSA Multiplayer
 
+![KSA Multiplayer](title.png)
+
 A multiplayer modification for Kitten Space Agency (KSA) that enables real-time cooperative gameplay. Players can see each other's spacecraft during orbital missions, maneuvers, and surface operations.
 
 ## Architecture
