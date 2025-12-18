@@ -27,7 +27,7 @@ This project uses a **dedicated server** architecture:
 
 ## Requirements
 
-- Kitten Space Agency v3057 or compatible
+- Kitten Space Agency v3103 or compatible
 - [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) (select "Desktop Runtime" for Windows x64)
 
 ---
