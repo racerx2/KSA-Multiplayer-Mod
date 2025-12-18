@@ -660,7 +660,7 @@ namespace KSA.Mods.Multiplayer
             
             // Create new orbit for local vehicle at offset position with same velocity
             Orbit orbit = Orbit.CreateFromStateCci(parent, localTime, offsetPos, targetVel, localVehicle.OrbitColor);
-            localVehicle.SetFlightPlan(new FlightPlan(orbit, (uint)localVehicle.Id.GetHashCode()));
+            localVehicle.SetFlightPlan(new FlightPlan(orbit, new KeyHash((uint)localVehicle.Id.GetHashCode())));
             localVehicle.UpdatePerFrameData();
             
             // CRITICAL: Update KinematicStates.Time to match the new orbit's state time

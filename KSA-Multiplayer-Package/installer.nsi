@@ -53,7 +53,7 @@ Section "Install"
     ; Install Multiplayer mod
     CreateDirectory "$INSTDIR\Content\Multiplayer"
     SetOutPath "$INSTDIR\Content\Multiplayer"
-    File "Content\Multiplayer\KSA.Mods.Multiplayer.dll"
+    File "Content\Multiplayer\Multiplayer.dll"
     File "Content\Multiplayer\mod.toml"
     File "LICENSE"
     
@@ -61,9 +61,9 @@ Section "Install"
     CreateDirectory "$INSTDIR\Content\Multiplayer\logs"
     
     ; === DEDICATED SERVER ===
-    ; Install server to KSA root (uses KSA's DLLs)
+    ; Install server to KSA root (uses KSA's DLLs via system .NET)
     SetOutPath "$INSTDIR"
-    File "Server\KSA-Dedicated-Server.exe"
+    File "Server\RunServer.cmd"
     File "Server\KSA-Dedicated-Server.dll"
     File "Server\KSA-Dedicated-Server.deps.json"
     File "Server\KSA-Dedicated-Server.runtimeconfig.json"
@@ -88,7 +88,7 @@ Section "Install"
     CreateShortcut "$DESKTOP\KSA with Mods.lnk" "$INSTDIR\Launcher\KSA.ModLoader.exe" "" "$INSTDIR\Client.ico" 0
     
     ; Create "KSA Dedicated Server" shortcut with Server.ico  
-    CreateShortcut "$DESKTOP\KSA Dedicated Server.lnk" "$INSTDIR\KSA-Dedicated-Server.exe" "" "$INSTDIR\Server.ico" 0
+    CreateShortcut "$DESKTOP\KSA Dedicated Server.lnk" "$INSTDIR\RunServer.cmd" "" "$INSTDIR\Server.ico" 0
     
     ; Set "Run as Administrator" flag on shortcuts
     nsExec::ExecToLog 'powershell -ExecutionPolicy Bypass -Command "$$lnk = \"$DESKTOP\KSA with Mods.lnk\"; $$bytes = [System.IO.File]::ReadAllBytes($$lnk); $$bytes[0x15] = $$bytes[0x15] -bor 0x20; [System.IO.File]::WriteAllBytes($$lnk, $$bytes)"'

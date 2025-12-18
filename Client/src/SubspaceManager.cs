@@ -276,7 +276,7 @@ namespace KSA.Mods.Multiplayer
                 vehicle.OrbitColor
             );
             
-            vehicle.SetFlightPlan(new FlightPlan(newOrbit, (uint)vehicle.Id.GetHashCode()));
+            vehicle.SetFlightPlan(new FlightPlan(newOrbit, new KeyHash((uint)vehicle.Id.GetHashCode())));
             vehicle.UpdatePerFrameData();
             
             // CRITICAL: Also update KinematicStates to match the new orbit time
@@ -327,7 +327,7 @@ namespace KSA.Mods.Multiplayer
                 vehicle.OrbitColor
             );
             
-            vehicle.SetFlightPlan(new FlightPlan(newOrbit, (uint)vehicle.Id.GetHashCode()));
+            vehicle.SetFlightPlan(new FlightPlan(newOrbit, new KeyHash((uint)vehicle.Id.GetHashCode())));
             vehicle.UpdatePerFrameData();
             
             // Update KinematicStates - get state vectors from the new orbit

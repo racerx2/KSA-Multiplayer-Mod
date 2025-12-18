@@ -41,7 +41,7 @@ This mod uses a **dedicated server** architecture:
 ## Running a Server
 
 1. Double-click "KSA Dedicated Server" shortcut
-2. Or run `KSA-Dedicated-Server.exe` from KSA folder
+2. Or run `RunServer.cmd` from KSA folder
 3. Edit `server_config.json` to customize:
 
 ```json

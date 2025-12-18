@@ -1,56 +1,54 @@
-namespace StarMap.API
-{
-    /// <summary>
-    /// StarMap mod interface.
-    /// Defined here to avoid requiring the StarMap.API NuGet package (requires GitHub auth).
-    /// This interface must match what StarMap expects.
-    /// </summary>
-    public interface IStarMapMod
-    {
-        void OnImmediateLoad();
-        void OnFullyLoaded();
-        bool ImmediateUnload { get; }
-        void Unload();
-    }
-}
+using System;
+using StarMap.API;
+using Brutal.Logging;
 
 namespace KSA.Mods.Multiplayer
 {
     /// <summary>
     /// StarMap mod loader entry point.
     /// This allows the mod to be loaded by StarMap in addition to native KSA loading.
+    /// Uses attribute-based lifecycle hooks as per StarMap API.
     /// </summary>
-    public class Multiplayer : StarMap.API.IStarMapMod
+    [StarMapMod]
+    public class StarMapEntry
     {
         /// <summary>
-        /// Called immediately when the mod is loaded (before Mod.PrepareSystems).
-        /// We don't do anything here - wait for full load.
+        /// Called immediately when the mod is loaded.
         /// </summary>
-        public void OnImmediateLoad()
+        [StarMapImmediateLoad]
+        public void Init(Mod definingMod)
         {
-            // Nothing - wait for OnFullyLoaded
+            DefaultCategory.Log.Info("StarMap: ImmediateLoad called", "Init", nameof(StarMapEntry));
+            // Don't initialize yet - wait for AllModsLoaded
         }
         
         /// <summary>
-        /// Called after all mods are loaded (after ModLibrary.LoadAll).
+        /// Called after all mods are loaded.
         /// This is where we initialize the multiplayer system.
         /// </summary>
-        public void OnFullyLoaded()
+        [StarMapAllModsLoaded]
+        public void AllModsLoaded()
         {
+            DefaultCategory.Log.Info("StarMap: AllModsLoaded - initializing multiplayer", "AllModsLoaded", nameof(StarMapEntry));
             ModEntry.Initialize();
         }
         
         /// <summary>
-        /// Whether to call Unload immediately after OnImmediateLoad.
-        /// We want to stay loaded.
+        /// Called every frame after GUI rendering.
         /// </summary>
-        public bool ImmediateUnload => false;
+        [StarMapAfterGui]
+        public void AfterGui(double dt)
+        {
+            ModEntry.Update(dt);
+        }
         
         /// <summary>
-        /// Called when the game unloads or mod is disabled.
+        /// Called when the mod is unloaded.
         /// </summary>
+        [StarMapUnload]
         public void Unload()
         {
+            DefaultCategory.Log.Info("StarMap: Unload called", "Unload", nameof(StarMapEntry));
             ModEntry.Shutdown();
         }
     }

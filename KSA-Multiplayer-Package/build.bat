@@ -45,18 +45,16 @@ echo.
 echo Copying files to package...
 
 :: Copy client mod DLL
-copy /Y "%CLIENT_PATH%\bin\Release\KSA.Mods.Multiplayer.dll" "%PACKAGE_PATH%Content\Multiplayer\"
+copy /Y "%CLIENT_PATH%\bin\Release\Multiplayer.dll" "%PACKAGE_PATH%Content\Multiplayer\"
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Failed to copy client mod DLL!
     pause
     exit /b 1
 )
 
-:: Copy server files
-copy /Y "%SERVER_PATH%\bin\Release\net10.0\KSA-Dedicated-Server.exe" "%PACKAGE_PATH%Server\"
+:: Copy server files (DLL-based, uses RunServer.cmd launcher)
 copy /Y "%SERVER_PATH%\bin\Release\net10.0\KSA-Dedicated-Server.dll" "%PACKAGE_PATH%Server\"
 copy /Y "%SERVER_PATH%\bin\Release\net10.0\KSA-Dedicated-Server.deps.json" "%PACKAGE_PATH%Server\"
-copy /Y "%SERVER_PATH%\bin\Release\net10.0\KSA-Dedicated-Server.runtimeconfig.json" "%PACKAGE_PATH%Server\"
 
 echo.
 echo ========================================
@@ -64,8 +62,8 @@ echo   Build Complete!
 echo ========================================
 echo.
 echo Package updated:
-echo   %PACKAGE_PATH%Content\Multiplayer\KSA.Mods.Multiplayer.dll
-echo   %PACKAGE_PATH%Server\KSA-Dedicated-Server.*
+echo   %PACKAGE_PATH%Content\Multiplayer\Multiplayer.dll
+echo   %PACKAGE_PATH%Server\KSA-Dedicated-Server.dll
 echo.
 
 :: Build installer

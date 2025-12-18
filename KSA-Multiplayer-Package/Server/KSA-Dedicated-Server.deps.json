@@ -13,7 +13,7 @@
           "Brutal.Core.Logging": "2025.0.0.0",
           "Brutal.RakNet": "2025.0.0.0",
           "CommunityToolkit.HighPerformance": "8.4.0.0",
-          "KSA": "2025.12.10.3057"
+          "KSA": "2025.12.31.3103"
         },
         "runtime": {
           "KSA-Dedicated-Server.dll": {}
@@ -64,11 +64,11 @@
           }
         }
       },
-      "KSA/2025.12.10.3057": {
+      "KSA/2025.12.31.3103": {
         "runtime": {
           "KSA.dll": {
-            "assemblyVersion": "2025.12.10.3057",
-            "fileVersion": "2025.12.10.3057"
+            "assemblyVersion": "2025.12.31.3103",
+            "fileVersion": "2025.12.31.3103"
           }
         }
       },
@@ -232,6 +232,22 @@
           }
         }
       },
+      "Brutal.Monitor.Host/2025.0.0.0": {
+        "runtime": {
+          "Brutal.Monitor.Host.dll": {
+            "assemblyVersion": "2025.0.0.0",
+            "fileVersion": "2025.12.4.0"
+          }
+        }
+      },
+      "Brutal.Monitor.Common/2025.0.0.0": {
+        "runtime": {
+          "Brutal.Monitor.Common.dll": {
+            "assemblyVersion": "2025.0.0.0",
+            "fileVersion": "2025.12.4.0"
+          }
+        }
+      },
       "Brutal.Render.Mesh/2025.0.0.0": {
         "runtime": {
           "Brutal.Render.Mesh.dll": {
@@ -269,6 +285,14 @@
           "Brutal.Core.Strings.dll": {
             "assemblyVersion": "2025.0.0.0",
             "fileVersion": "2025.11.1.0"
+          }
+        }
+      },
+      "System.IO.Hashing/10.0.0.1": {
+        "runtime": {
+          "System.IO.Hashing.dll": {
+            "assemblyVersion": "10.0.0.1",
+            "fileVersion": "10.0.125.57005"
           }
         }
       },
@@ -483,7 +507,7 @@
       "serviceable": false,
       "sha512": ""
     },
-    "KSA/2025.12.10.3057": {
+    "KSA/2025.12.31.3103": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
@@ -588,6 +612,16 @@
       "serviceable": false,
       "sha512": ""
     },
+    "Brutal.Monitor.Host/2025.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Brutal.Monitor.Common/2025.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
     "Brutal.Render.Mesh/2025.0.0.0": {
       "type": "reference",
       "serviceable": false,
@@ -609,6 +643,11 @@
       "sha512": ""
     },
     "Brutal.Core.Strings/2025.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "System.IO.Hashing/10.0.0.1": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""

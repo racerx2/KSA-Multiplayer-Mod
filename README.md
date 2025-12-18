@@ -22,7 +22,7 @@ This project uses a **dedicated server** architecture:
 - **Password Protection** - Optional server passwords with timeout enforcement
 - **System Validation** - Ensures all players run the same solar system
 - **EVA Support** - Synchronizes astronaut objects between players
-- **StarMap Compatible** - Works with both native KSA mod loading and StarMap loader
+- **StarMap Compatible** - Works with both native KSA mod loading and [StarMap](https://github.com/StarMapLoader/StarMap) loader
 - **Time Warp Support** - Players can warp independently; use Sync button to catch up
 
 ## Requirements
@@ -48,7 +48,7 @@ This project uses a **dedicated server** architecture:
 1. Copy `Launcher/*` to `[KSA Install]\Launcher\`
 2. Copy `Content/Multiplayer/*` to `[KSA Install]\Content\Multiplayer\`
 3. Copy server files to `[KSA Install]\` root:
-   - `KSA-Dedicated-Server.exe`
+   - `RunServer.cmd`
    - `KSA-Dedicated-Server.dll`
    - `KSA-Dedicated-Server.deps.json`
    - `KSA-Dedicated-Server.runtimeconfig.json`
@@ -60,6 +60,10 @@ This project uses a **dedicated server** architecture:
    enabled = true
    ```
 
+### StarMap Mod Loader
+
+This mod is also compatible with [StarMap](https://github.com/StarMapLoader/StarMap), the community mod loader. If you use StarMap instead of the included KSA.ModLoader, the multiplayer mod will automatically detect and use StarMap's attribute-based lifecycle hooks.
+
 ---
 
 ## Running the Server
@@ -67,7 +71,7 @@ This project uses a **dedicated server** architecture:
 ### Quick Start
 
 1. Double-click the **KSA Dedicated Server** desktop shortcut
-   - Or run `KSA-Dedicated-Server.exe` from KSA installation folder
+   - Or run `RunServer.cmd` from KSA installation folder
 
 2. The server will start and display:
    ```
@@ -238,13 +242,14 @@ This will:
    ```powershell
    cd Server
    dotnet build -c Release
-   copy bin\Release\net10.0\KSA-Dedicated-Server.exe "C:\Program Files\Kitten Space Agency\"
+   copy bin\Release\net10.0\KSA-Dedicated-Server.dll "C:\Program Files\Kitten Space Agency\"
+   copy bin\Release\net10.0\KSA-Dedicated-Server.deps.json "C:\Program Files\Kitten Space Agency\"
    ```
 
-3. Run server from KSA folder (needs KSA's DLLs):
+3. Run server from KSA folder (uses system .NET 10):
    ```powershell
    cd "C:\Program Files\Kitten Space Agency"
-   .\KSA-Dedicated-Server.exe
+   dotnet KSA-Dedicated-Server.dll
    ```
 
 ---

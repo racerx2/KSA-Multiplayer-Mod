@@ -287,7 +287,7 @@ namespace KSA.Mods.Multiplayer
             
             // Create orbit from the converted CCI coordinates
             Orbit newOrbit = Orbit.CreateFromStateCci(parent, simTime, positionCci, velocityCci, Vessel.OrbitColor);
-            var flightPlan = new FlightPlan(newOrbit, (uint)Vessel.Id.GetHashCode());
+            var flightPlan = new FlightPlan(newOrbit, new KeyHash((uint)Vessel.Id.GetHashCode()));
             Vessel.SetFlightPlan(flightPlan);
             
             // Interpolate orientation in CCF space
@@ -336,7 +336,7 @@ namespace KSA.Mods.Multiplayer
             
             // Create new orbit at lerped position
             Orbit newOrbit = Orbit.CreateFromStateCci(parent, simTime, lerpedPos, lerpedVel, Vessel.OrbitColor);
-            var flightPlan = new FlightPlan(newOrbit, (uint)Vessel.Id.GetHashCode());
+            var flightPlan = new FlightPlan(newOrbit, new KeyHash((uint)Vessel.Id.GetHashCode()));
             Vessel.SetFlightPlan(flightPlan);
             
             // Lerp orientation (in CCI for orbital)

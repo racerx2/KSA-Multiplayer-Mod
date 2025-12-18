@@ -288,13 +288,13 @@ namespace KSA.Mods.Multiplayer
                                 if (existingTemplate != null)
                                 {
                                     // Create the KittenEva - our Harmony patch will inject the existing renderable
-                                    remoteVehicle = new KittenEva(Universe.CurrentSystem, existingTemplate, parent, vehicleId, null, orbit);
+                                    remoteVehicle = new KittenEva(Universe.CurrentSystem, existingTemplate, parent, vehicleId);
                                     
                                     Log($"KittenEva created for {vehicleId}");
                                     
                                     // Add to parent and set flight plan
                                     parent.Children.Add(remoteVehicle);
-                                    var flightPlan = new FlightPlan(orbit, (uint)vehicleId.GetHashCode());
+                                    var flightPlan = new FlightPlan(orbit, new KeyHash((uint)vehicleId.GetHashCode()));
                                     remoteVehicle.SetFlightPlan(flightPlan);
                                     remoteVehicle.UpdatePerFrameData();
                                 }
@@ -343,7 +343,7 @@ namespace KSA.Mods.Multiplayer
                     SimTime senderTime = new SimTime(data.SenderStateTimeSeconds);
                     Orbit orbit = Orbit.CreateFromStateCci(parentCelestial, senderTime, 
                         data.TargetPosition, data.TargetVelocity, remoteVehicle.OrbitColor);
-                    var flightPlan = new FlightPlan(orbit, (uint)vehicleId.GetHashCode());
+                    var flightPlan = new FlightPlan(orbit, new KeyHash((uint)vehicleId.GetHashCode()));
                     remoteVehicle.SetFlightPlan(flightPlan);
                     remoteVehicle.UpdatePerFrameData();
                 }

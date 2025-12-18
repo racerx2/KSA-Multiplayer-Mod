@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>KSA.Mods.Multiplayer</RootNamespace>
-    <AssemblyName>KSA.Mods.Multiplayer</AssemblyName>
+    <AssemblyName>Multiplayer</AssemblyName>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -87,6 +87,12 @@
     
     <Reference Include="MemoryPack.Core">
       <HintPath>C:\Program Files\Kitten Space Agency\MemoryPack.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <!-- StarMap API for mod loader compatibility -->
+    <Reference Include="StarMap.API">
+      <HintPath>C:\Program Files\Kitten Space Agency\Content\KSA.MFD\StarMap.API.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>KSA.Multiplayer.DedicatedServer</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RollForward>LatestMajor</RollForward>
   </PropertyGroup>
 
   <!-- MemoryPack for message serialization (includes source generator) -->
