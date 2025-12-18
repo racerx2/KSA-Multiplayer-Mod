@@ -2,11 +2,13 @@
 
 ![KSA Multiplayer](title.png)
 
-Multiplayer mod for Kitten Space Agency v3057+
+Multiplayer mod for Kitten Space Agency v3103+
 
 ## Requirements
 
-- KSA version 3057 or later
+- KSA version 3103 or later
+- **[StarMap Mod Loader](https://github.com/StarMapLoader/StarMap)** (REQUIRED)
+  - Install to `C:\Program Files (x86)\StarMap\`
 - **.NET 10 Desktop Runtime** (REQUIRED)
   - Download from: https://dotnet.microsoft.com/en-us/download/dotnet/10.0
   - Select ".NET Desktop Runtime" for Windows x64
@@ -14,11 +16,12 @@ Multiplayer mod for Kitten Space Agency v3057+
 ## Installation
 
 ### Option 1: Installer (Recommended)
-1. **Install .NET 10 Desktop Runtime first!**
-2. Run `KSA-Multiplayer-Setup.exe`
-3. Select your KSA installation folder
-4. Two desktop shortcuts will be created:
-   - **KSA with Mods** - Launch game with multiplayer mod
+1. **Install StarMap Mod Loader first!**
+2. **Install .NET 10 Desktop Runtime**
+3. Run `KSA-Multiplayer-Setup.exe`
+4. Select your KSA installation folder
+5. Two desktop shortcuts will be created:
+   - **KSA with Mods** - Launch StarMap mod loader
    - **KSA Dedicated Server** - Run a multiplayer server
 
 ### Option 2: Manual Install

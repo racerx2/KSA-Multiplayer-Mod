@@ -39,7 +39,8 @@ Section "Install"
     File "Server.ico"
     
     ; === MOD LOADER ===
-    ; Create and install to Launcher folder
+    ; Note: Using StarMap mod loader (installed separately)
+    ; Keeping Launcher folder files for backwards compatibility
     CreateDirectory "$INSTDIR\Launcher"
     SetOutPath "$INSTDIR\Launcher"
     File "Launcher\KSA.ModLoader.exe"
@@ -84,8 +85,8 @@ Section "Install"
     Delete "$DESKTOP\KSA with Mods.lnk"
     Delete "$DESKTOP\KSA Dedicated Server.lnk"
     
-    ; Create "KSA with Mods" shortcut with Client.ico
-    CreateShortcut "$DESKTOP\KSA with Mods.lnk" "$INSTDIR\Launcher\KSA.ModLoader.exe" "" "$INSTDIR\Client.ico" 0
+    ; Create "KSA with Mods" shortcut pointing to StarMap with Client.ico
+    CreateShortcut "$DESKTOP\KSA with Mods.lnk" "$PROGRAMFILES32\StarMap\StarMap.exe" "" "$INSTDIR\Client.ico" 0
     
     ; Create "KSA Dedicated Server" shortcut with Server.ico  
     CreateShortcut "$DESKTOP\KSA Dedicated Server.lnk" "$INSTDIR\RunServer.cmd" "" "$INSTDIR\Server.ico" 0

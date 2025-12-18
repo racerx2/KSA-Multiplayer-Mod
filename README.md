@@ -28,6 +28,7 @@ This project uses a **dedicated server** architecture:
 ## Requirements
 
 - Kitten Space Agency v3103 or compatible
+- [StarMap Mod Loader](https://github.com/StarMapLoader/StarMap) (install separately)
 - [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) (select "Desktop Runtime" for Windows x64)
 
 ---
@@ -36,11 +37,12 @@ This project uses a **dedicated server** architecture:
 
 ### Using the Installer (Recommended)
 
-1. **Install .NET 10 Desktop Runtime first!**
-2. Download `KSA-Multiplayer-Setup.exe` from [Releases](https://github.com/racerx2/KSA-Multiplayer-Mod/releases)
-3. Run the installer and select your KSA installation folder
-4. Two desktop shortcuts will be created:
-   - **KSA with Mods** - Launch the game with multiplayer mod
+1. **Install [StarMap Mod Loader](https://github.com/StarMapLoader/StarMap/releases) first!**
+2. **Install .NET 10 Desktop Runtime**
+3. Download `KSA-Multiplayer-Setup.exe` from [Releases](https://github.com/racerx2/KSA-Multiplayer-Mod/releases)
+4. Run the installer and select your KSA installation folder
+5. Two desktop shortcuts will be created:
+   - **KSA with Mods** - Launch StarMap (requires StarMap installed to `C:\Program Files (x86)\StarMap\`)
    - **KSA Dedicated Server** - Run a multiplayer server
 
 ### Manual Installation
@@ -62,7 +64,7 @@ This project uses a **dedicated server** architecture:
 
 ### StarMap Mod Loader
 
-This mod is also compatible with [StarMap](https://github.com/StarMapLoader/StarMap), the community mod loader. If you use StarMap instead of the included KSA.ModLoader, the multiplayer mod will automatically detect and use StarMap's attribute-based lifecycle hooks.
+This mod requires [StarMap](https://github.com/StarMapLoader/StarMap), the community mod loader. The installer creates a shortcut that launches StarMap from `C:\Program Files (x86)\StarMap\StarMap.exe`. Make sure StarMap is installed and configured to point to your KSA installation before using the shortcut.
 
 ---
 
