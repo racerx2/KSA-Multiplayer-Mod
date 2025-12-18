@@ -86,9 +86,12 @@ Section "Install"
     Delete "$DESKTOP\KSA Dedicated Server.lnk"
     
     ; Create "KSA with Mods" shortcut pointing to StarMap with Client.ico
+    ; SetOutPath sets the "Start in" working directory for the shortcut
+    SetOutPath "$PROGRAMFILES32\StarMap"
     CreateShortcut "$DESKTOP\KSA with Mods.lnk" "$PROGRAMFILES32\StarMap\StarMap.exe" "" "$INSTDIR\Client.ico" 0
     
     ; Create "KSA Dedicated Server" shortcut with Server.ico  
+    SetOutPath "$INSTDIR"
     CreateShortcut "$DESKTOP\KSA Dedicated Server.lnk" "$INSTDIR\RunServer.cmd" "" "$INSTDIR\Server.ico" 0
     
     ; Set "Run as Administrator" flag on shortcuts
