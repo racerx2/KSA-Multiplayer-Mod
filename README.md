@@ -1,4 +1,5 @@
-# KSA Multiplayer
+# KSA Multiplayer (WILL BE ARCHIVED SOON.) 
+COMPLETE REWRITE IN DEVELOPMENT
 
 ![KSA Multiplayer](title.png)
 
