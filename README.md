@@ -286,7 +286,7 @@ Key implementation:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE)
+PolyForm Noncommercial License 1.0.0 - see [LICENSE](LICENSE)
 
 ## Author
 
