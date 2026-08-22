@@ -4,8 +4,8 @@ Unicode True
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 
-Name "KSA Multiplayer Mod 0.4.3 Beta 1"
-OutFile "KSA-Multiplayer-Setup-v0.4.3-beta.1.exe"
+Name "KSA Multiplayer Mod 0.4.0"
+OutFile "KSA-Multiplayer-Setup-v0.4.0.exe"
 InstallDir "$PROGRAMFILES64\Kitten Space Agency"
 InstallDirRegKey HKLM "Software\Kitten Space Agency" "InstallPath"
 RequestExecutionLevel admin

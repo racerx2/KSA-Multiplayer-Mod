@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v10.0": {
-      "KSA-Dedicated-Server/0.3.0": {
+      "KSA-Dedicated-Server/0.4.0": {
         "dependencies": {
           "MemoryPack": "1.21.4"
         },
@@ -30,7 +30,7 @@
     }
   },
   "libraries": {
-    "KSA-Dedicated-Server/0.3.0": {
+    "KSA-Dedicated-Server/0.4.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

@@ -1,8 +1,9 @@
-# Built installer - upload to GitHub Releases
-KSA-Multiplayer-Setup.exe
+# Built installers and archives - these belong on GitHub Releases, not in git
+KSA-Multiplayer-Setup*.exe
 
-# Old release archives
+# Release archives
 *.zip
+*.tar.gz
 
 # Build outputs
 *.pdb
