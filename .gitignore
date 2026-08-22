@@ -2,6 +2,7 @@
 bin/
 obj/
 publish/
+KSA-Multiplayer-Package/KSA-Multiplayer-Setup-*.exe
 
 # IDE and editor files
 .vs/
@@ -23,6 +24,7 @@ logs/
 # Local settings and config
 *.local.toml
 server_config.json
+StarMapConfig.json
 !KSA-Multiplayer-Package/Server/server_config.json
 
 # NuGet
@@ -42,6 +44,15 @@ todo.txt
 *.txt
 !README.txt
 
+# Working notes and code-trace documents. Local reference only - the repository
+# ships code, its README and its CHANGELOG, nothing else.
+COMMENTS-BEFORE-REWRITE.md
+COMMENTS-REVIEW.md
+KSAMP-session-handover.md
+MP Trace/
+*-session-handover.md
+*-audit-*.md
+
 # Conversation logs / AI transcripts
 *conversation*.txt
 *transcript*.txt
@@ -55,3 +66,11 @@ debug/
 
 # Reference code (not part of distribution)
 3014REFERENCECODE/
+
+# Game assemblies and decompiled sources - DO NOT REDISTRIBUTE.
+# These are the KSA developer's proprietary binaries/code. They are copied here
+# locally for compilation only and must never be committed or shipped.
+lib/
+lib-*/
+decompiled-*/
+KSA_Source-*/

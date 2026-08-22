@@ -15,7 +15,7 @@ namespace KSA.Mods.Multiplayer
         
         public IReadOnlyList<ChatMessage> MessageHistory => _messageHistory;
         
-        // Event with sender name and message text for easy UI consumption
+        // Raised with the sender name and message text.
         public event Action<string, string>? OnMessageReceived;
         
         public ChatManager(NetworkManager networkManager)
@@ -50,42 +50,41 @@ namespace KSA.Mods.Multiplayer
             OnMessageReceived?.Invoke(senderName, text);
         }
         
-        /// <summary>
-        /// Send a chat message (uses local player name automatically)
-        /// </summary>
+        /// <summary>Sends a chat message to the authority.</summary>
         public void SendMessage(string text)
         {
-            if (!MultiplayerSettings.Current.EnableChat || !_networkManager.IsOnline)
+            if (!MultiplayerSettings.Current.EnableChat)
+            {
+                ModLogger.Log("Network", "CHAT: not sent - chat is disabled in settings");
                 return;
-            
-            string senderName = MultiplayerManager.Instance?.LocalPlayerName ?? "Unknown";
-            
+            }
+
+            if (!_networkManager.IsOnline)
+            {
+                ModLogger.Log("Network", "CHAT: not sent - not connected");
+                return;
+            }
+
             if (!_networkManager.IsHost && Authority.GameAuthorityId.Value == 0)
+            {
+                // Log and drop the message when no game authority is known.
+                ModLogger.Log("Network",
+                    "CHAT: not sent - no game authority is known to this client " +
+                    "(GameAuthorityId is 0 and we are not the host)");
                 return;
-            
+            }
+
             var chatMessage = new ChatRequestMessage(text);
             Dispatch.ToAuthority(chatMessage);
-            
-            var localMessage = new ChatMessage(senderName, text, DateTime.UtcNow, ChatMessageType.Player);
-            AddMessageToHistory(localMessage);
-            OnMessageReceived?.Invoke(senderName, text);
+            ModLogger.Log("Network", $"CHAT SENT: {text.Length} chars to the authority");
+
+            // Do not echo locally; the authority sends the message back.
         }
         
-        /// <summary>
-        /// Send a system message (displayed as on-screen alert)
-        /// </summary>
-        public void SendSystemMessage(string text)
-        {
-            Alert.Create(text, Color.Green, 4.0);
-            // TODO: Send via network to other players
-        }
-        
-        /// <summary>
-        /// Add a local system message (displayed as on-screen alert, not in chat)
-        /// </summary>
+        /// <summary>Shows a local on-screen system message.</summary>
         public void AddSystemMessage(string text)
         {
-            Alert.Create(text, Color.Green, 4.0);
+            TimedAlert.Create(text, Color.Green, 4.0);
         }
         
         private void AddMessageToHistory(ChatMessage message)

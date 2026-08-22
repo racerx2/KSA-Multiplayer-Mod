@@ -9,10 +9,7 @@ namespace KSA.Multiplayer.DedicatedServer
     {
         public const byte MESSAGE_ID = 205;
         
-        /// <summary>
-        /// Authoritative server time in seconds.
-        /// All clients should sync to this time.
-        /// </summary>
+        /// <summary>Authoritative server time in seconds.</summary>
         [MemoryPackOrder(0)]
         public double ServerTimeSeconds { get; set; }
         

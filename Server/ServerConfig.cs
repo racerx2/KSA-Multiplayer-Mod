@@ -19,16 +19,41 @@ namespace KSA.Multiplayer.DedicatedServer
         
         [JsonPropertyName("systemDisplayName")]
         public string SystemDisplayName { get; set; } = "Solar System";
+
+        /// <summary>Game type clients must be running: "Sandbox" or "Testing".</summary>
+        public string GameType { get; set; } = "Testing";
         
         [JsonPropertyName("serverName")]
         public string ServerName { get; set; } = "KSA Multiplayer Server";
         
         [JsonPropertyName("motd")]
         public string Motd { get; set; } = "Welcome to the server!";
+
+        /// <summary>Name of the player hosting this server, or empty when none.</summary>
+        public string HostPlayerName { get; set; } = "";
         
         [JsonPropertyName("password")]
         public string Password { get; set; } = "";
-        
+
+        /// <summary>Path to the local Kitten Space Agency installation, or empty to auto-detect.</summary>
+        /// <remarks>
+        /// Read by KsaInstall.FromConfigFile, which parses server_config.json
+        /// as raw JSON rather than through this class: locating the install has
+        /// to happen before the game assemblies this type depends on can be
+        /// loaded. Nothing reads this property, and that is not a sign it is
+        /// unused — the key must keep the name "gamePath".
+        /// </remarks>
+        [JsonPropertyName("gamePath")]
+        public string GamePath { get; set; } = "";
+
+        /// <summary>Whether players may share craft through this server.</summary>
+        [JsonPropertyName("craftSharingEnabled")]
+        public bool CraftSharingEnabled { get; set; } = true;
+
+        /// <summary>How many craft one player may keep in the shared library.</summary>
+        [JsonPropertyName("maxSharedCraftPerPlayer")]
+        public int MaxSharedCraftPerPlayer { get; set; } = 32;
+
         [JsonIgnore]
         public HashSet<string> BannedIPs { get; private set; } = new();
         

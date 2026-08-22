@@ -7,8 +7,15 @@ using KSA;
 
 namespace KSA.Mods.Multiplayer
 {
-    public class MultiplayerWindow : ImGuiWindow, IStaticWindow
+    /// <summary>The multiplayer panel, drawn with ImGui.Begin.</summary>
+    public class MultiplayerWindow
     {
+        /// <summary>Window visibility.</summary>
+        public bool Show = true;
+
+        private static readonly float2 InitialPosition = new float2(60f, 90f);
+        private readonly float2 _initialSize;
+
         private readonly MultiplayerManager _multiplayerManager;
         private ImInputString _serverIpInput = new ImInputString(256, "localhost");
         private ImInputString _portInput = new ImInputString(10, "7777");
@@ -16,19 +23,18 @@ namespace KSA.Mods.Multiplayer
         private ImInputString _passwordInput = new ImInputString(64, "");
         private ImInputString _chatInput = new ImInputString(256, "");
         private ImInputString _teleportDistanceInput = new ImInputString(32, "100");
-        private double _lastUpdateTime = 0;
         
         // UI State
         private int _selectedTeleportPlayer = 0;
         private int _selectedSyncPlayer = 0;
+        private int _selectedLocalCraft = 0;
         private List<string> _chatMessages = new List<string>();
         private const int MAX_CHAT_MESSAGES = 50;
         
-        public MultiplayerWindow(MultiplayerManager manager, float2 initialSize) 
-            : base(initialSize, lockAspectRatio: false)
+        public MultiplayerWindow(MultiplayerManager manager, float2 initialSize)
         {
+            _initialSize = initialSize;
             _multiplayerManager = manager;
-            SetWindowTitle(ModInfo.WindowTitle);
             
             // Load defaults from settings
             _playerNameInput = new ImInputString(64, MultiplayerSettings.Current.DefaultPlayerName);
@@ -42,7 +48,7 @@ namespace KSA.Mods.Multiplayer
                 _multiplayerManager.ChatManager.OnMessageReceived += OnChatMessageReceived;
             }
         }
-        
+
         private void OnChatMessageReceived(string sender, string message)
         {
             _chatMessages.Add($"[{sender}]: {message}");
@@ -50,16 +56,68 @@ namespace KSA.Mods.Multiplayer
                 _chatMessages.RemoveAt(0);
         }
         
-        public override void DrawContent(Viewport viewport)
+        public bool IsShown => Show;
+        public void Toggle() => Show = !Show;
+        public void SetShown(bool shown) => Show = shown;
+
+        /// <summary>Draws the window for this frame.</summary>
+        public void Draw(Viewport viewport)
         {
-            double currentTime = Universe.GetElapsedSimTime().Seconds();
-            double deltaTime = _lastUpdateTime == 0 ? 0.016 : currentTime - _lastUpdateTime;
-            _lastUpdateTime = currentTime;
-            _multiplayerManager.Update(deltaTime);
-            
-            // Draw nametags above vehicles
-            _multiplayerManager.NameTagRenderer?.DrawNameTags();
-            
+            try
+            {
+                // Draw nametags regardless of panel state.
+                _multiplayerManager.NameTagRenderer?.DrawNameTags();
+
+                // Another player asking to be undocked needs answering whether
+                // or not this panel is open, so it is drawn before the check.
+                DrawUndockPrompt();
+
+                if (!Show)
+                    return;
+
+                ImGui.SetNextWindowPos(in InitialPosition, ImGuiCond.FirstUseEver, null);
+                ImGui.SetNextWindowSize(in _initialSize, ImGuiCond.FirstUseEver);
+
+                // Begin returns false while the window is collapsed.
+                if (!ImGui.Begin(ModInfo.WindowTitle, ref Show))
+                {
+                    ImGui.End();
+                    return;
+                }
+
+                // End must run even if the content throws, or the ImGui window stack is
+                // left unbalanced and every later frame draws into a broken state.
+                try
+                {
+                    DrawContent(viewport);
+                }
+                finally
+                {
+                    ImGui.End();
+                }
+            }
+            catch (Exception ex)
+            {
+                ModLogger.LogAlways("Renderer", $"MultiplayerWindow.Draw failed: {ex}");
+            }
+        }
+
+        private void DrawContent(Viewport viewport)
+        {
+            // A version mismatch refuses the connection; nothing else matters.
+            if (!string.IsNullOrEmpty(_multiplayerManager.VersionMismatchError))
+            {
+                DrawVersionMismatchError();
+                return;
+            }
+
+            // A game type mismatch also refuses the connection.
+            if (!string.IsNullOrEmpty(_multiplayerManager.GameTypeMismatchError))
+            {
+                DrawGameTypeMismatchError();
+                return;
+            }
+
             // Check for system mismatch error
             if (!string.IsNullOrEmpty(_multiplayerManager.SystemMismatchError))
             {
@@ -80,7 +138,10 @@ namespace KSA.Mods.Multiplayer
                 ImGui.Separator();
                 DrawPlayerList();
                 ImGui.Separator();
+                ImGui.Separator();
                 DrawChatSection();
+                ImGui.Separator();
+                DrawCraftSection();
                 ImGui.Separator();
                 DrawSyncSection();
             }
@@ -95,6 +156,47 @@ namespace KSA.Mods.Multiplayer
             DrawAboutSection();
         }
         
+        /// <summary>Reports that the connection was refused because the mod versions differ.</summary>
+        private void DrawVersionMismatchError()
+        {
+            ImGui.TextColored(new float4(1, 0.3f, 0.3f, 1), "\u26A0 CONNECTION REFUSED");
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            ImGui.TextColored(new float4(1, 0.8f, 0, 1), "Version Mismatch!");
+            ImGui.Spacing();
+
+            ImGui.TextWrapped(_multiplayerManager.VersionMismatchError ?? "Unknown error");
+            ImGui.Spacing();
+
+            ImGui.Text("Downloads:");
+            ImGui.SameLine();
+            ImGui.TextColored(new float4(0.4f, 0.7f, 1.0f, 1.0f), ModInfo.GitHubUrl + "/releases");
+
+            if (ImGui.Button("Copy download link"))
+                ImGui.SetClipboardText(ModInfo.GitHubUrl + "/releases");
+            ImGui.SameLine();
+            if (ImGui.Button("OK##version"))
+                _multiplayerManager.ClearVersionMismatchError();
+        }
+
+        /// <summary>Reports that the connection was refused because the game types differ.</summary>
+        private void DrawGameTypeMismatchError()
+        {
+            ImGui.TextColored(new float4(1, 0.3f, 0.3f, 1), "\u26A0 CONNECTION REFUSED");
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            ImGui.TextColored(new float4(1, 0.8f, 0, 1), "Game Type Mismatch!");
+            ImGui.Spacing();
+
+            ImGui.TextWrapped(_multiplayerManager.GameTypeMismatchError ?? "Unknown error");
+            ImGui.Spacing();
+
+            if (ImGui.Button("OK##gametype"))
+                _multiplayerManager.ClearGameTypeMismatchError();
+        }
+
         private void DrawSystemMismatchError()
         {
             ImGui.TextColored(new float4(1, 0.3f, 0.3f, 1), "⚠ CONNECTION FAILED");
@@ -118,18 +220,21 @@ namespace KSA.Mods.Multiplayer
         private void DrawConnectionError()
         {
             ImGui.PushStyleColor(ImGuiCol.ChildBg, new float4(0.3f, 0.1f, 0.1f, 0.8f));
-            ImGui.BeginChild("ConnectionError", new float2(0, 60), ImGuiChildFlags.Borders);
-            
+            ImGui.BeginChild("ConnectionError", new float2(0, 120), ImGuiChildFlags.Borders);
+
             ImGui.TextColored(new float4(1, 0.4f, 0.4f, 1), "⚠ Connection Failed");
-            ImGui.TextColored(new float4(1, 0.8f, 0.8f, 1), _multiplayerManager.ConnectionError ?? "Unknown error");
-            
-            ImGui.SameLine();
-            ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X - 30);
-            if (ImGui.SmallButton("X"))
+
+            // Refusal reasons are full sentences, so the text has to wrap.
+            ImGui.PushStyleColor(ImGuiCol.Text, new float4(1, 0.8f, 0.8f, 1));
+            ImGui.TextWrapped(_multiplayerManager.ConnectionError ?? "Unknown error");
+            ImGui.PopStyleColor();
+
+            ImGui.Spacing();
+            if (ImGui.SmallButton("Dismiss"))
             {
                 _multiplayerManager.ClearConnectionError();
             }
-            
+
             ImGui.EndChild();
             ImGui.PopStyleColor();
             ImGui.Spacing();
@@ -137,10 +242,24 @@ namespace KSA.Mods.Multiplayer
 
         private void DrawConnectionSection()
         {
+            if (!_multiplayerManager.IsConnected)
+            {
+                ImGui.TextColored(
+                    new float4(0.4f, 0.85f, 1f, 1f),
+                    "Join a multiplayer server");
+                ImGui.TextWrapped(
+                    "Enter the server address and click Connect. " +
+                    "If the server is password protected, fill in the password too.");
+                ImGui.Spacing();
+            }
+
             // Connection Status Indicator
             if (_multiplayerManager.IsConnected)
             {
-                ImGui.TextColored(new float4(0, 1, 0, 1), "● CONNECTED");
+                if (_multiplayerManager.IsWorldReady)
+                    ImGui.TextColored(new float4(0, 1, 0, 1), "● CONNECTED");
+                else
+                    ImGui.TextColored(new float4(1, 0.8f, 0, 1), "● AUTHENTICATING");
                 ImGui.SameLine();
                 if (_multiplayerManager.IsHost)
                     ImGui.TextColored(new float4(1, 0.8f, 0, 1), "(HOST)");
@@ -155,7 +274,7 @@ namespace KSA.Mods.Multiplayer
             ImGui.Spacing();
             
             // Connection inputs
-            ImGui.Text("Server IP:"); ImGui.SameLine();
+            ImGui.Text("Server address:"); ImGui.SameLine();
             ImGui.SetNextItemWidth(150);
             if (ImGui.InputText("##serverip", _serverIpInput))
             {
@@ -175,16 +294,28 @@ namespace KSA.Mods.Multiplayer
             }
             
             ImGui.Text("Name:"); ImGui.SameLine();
-            ImGui.SetNextItemWidth(100);
+            ImGui.SetNextItemWidth(150);
             if (ImGui.InputText("##playername", _playerNameInput))
             {
                 MultiplayerSettings.Current.DefaultPlayerName = _playerNameInput.ToString();
                 MultiplayerSettings.Save();
             }
-            
+
+            // Warns before Connect is pressed rather than after the server refuses.
+            if (!_multiplayerManager.IsConnected)
+            {
+                string? nameProblem = MultiplayerManager.ValidatePlayerName(_playerNameInput.ToString());
+                if (nameProblem != null)
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Text, new float4(1f, 0.75f, 0.3f, 1f));
+                    ImGui.TextWrapped(nameProblem);
+                    ImGui.PopStyleColor();
+                }
+            }
+
             ImGui.Text("Password:"); ImGui.SameLine();
-            ImGui.SetNextItemWidth(100);
-            if (ImGui.InputText("##password", _passwordInput, ImGuiInputTextFlags.Password))
+            ImGui.SetNextItemWidth(150);
+            if (ImGui.InputText("##serverpassword", _passwordInput))
             {
                 MultiplayerSettings.Current.ServerPassword = _passwordInput.ToString();
                 MultiplayerSettings.Save();
@@ -195,8 +326,15 @@ namespace KSA.Mods.Multiplayer
             // Connection buttons
             if (!_multiplayerManager.IsConnected)
             {
-                if (ImGui.Button("Connect") && ushort.TryParse(_portInput.ToString(), out ushort portNum))
-                    _ = _multiplayerManager.JoinSession(_playerNameInput.ToString(), _serverIpInput.ToString(), portNum, _passwordInput.ToString());
+                if (ImGui.Button("Connect"))
+                {
+                    if (ushort.TryParse(_portInput.ToString(), out ushort port))
+                    {
+                        _ = _multiplayerManager.JoinSession(
+                            _playerNameInput.ToString(), _serverIpInput.ToString(), port,
+                            _passwordInput.ToString());
+                    }
+                }
             }
             else
             {
@@ -205,19 +343,62 @@ namespace KSA.Mods.Multiplayer
             }
         }
         
+        /// <summary>Draws the ask-to-undock prompt, when another player is waiting on one.</summary>
+        /// <remarks>
+        /// Its own window rather than a section of the panel: the player being
+        /// asked is flying, and may well have the multiplayer panel closed. It
+        /// takes no keyboard focus, so it cannot swallow flight controls while
+        /// it is up, and it disappears on its own when the ask lapses.
+        /// </remarks>
+        private void DrawUndockPrompt()
+        {
+            UndockRequests.Prompt? prompt = UndockRequests.Pending;
+            if (prompt == null) return;
+
+            ImGui.SetNextWindowSize(new float2(360, 0), ImGuiCond.Always);
+            if (!ImGui.Begin("Undock request###mpUndockAsk", ImGuiWindowFlags.NoCollapse |
+                                                             ImGuiWindowFlags.NoFocusOnAppearing |
+                                                             ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                ImGui.End();
+                return;
+            }
+
+            try
+            {
+                ImGui.TextWrapped($"{prompt.Requester} is asking to undock from {prompt.StackName}.");
+                ImGui.Spacing();
+                ImGui.TextColored(new float4(0.7f, 0.7f, 0.7f, 1),
+                    $"Port #{prompt.ConnectorIndex} - {prompt.SecondsLeft:F0}s left");
+                ImGui.Spacing();
+
+                if (ImGui.Button("Undock them", new float2(150, 0)))
+                    UndockRequests.Allow();
+
+                ImGui.SameLine();
+                if (ImGui.Button("Decline", new float2(150, 0)))
+                    UndockRequests.Decline();
+            }
+            finally
+            {
+                ImGui.End();
+            }
+        }
+
         private void DrawPlayerList()
         {
             ImGui.Text("Players:");
             
             var players = _multiplayerManager.ConnectedPlayers;
             var subspaceManager = _multiplayerManager.SubspaceManager;
-            bool isHost = _multiplayerManager.IsHost;
             string localPlayer = _multiplayerManager.LocalPlayerName ?? "";
             
             foreach (var player in players)
             {
-                // Host indicator
-                bool isPlayerHost = (player == "Player"); // TODO: Track actual host name
+                // Stars the player the server reports as host.
+                string hostName = _multiplayerManager.HostPlayerName;
+                bool isPlayerHost = !string.IsNullOrEmpty(hostName) &&
+                    string.Equals(player, hostName, StringComparison.OrdinalIgnoreCase);
                 
                 // Player name with indicators
                 string displayName = player;
@@ -236,22 +417,19 @@ namespace KSA.Mods.Multiplayer
                 {
                     bool sameSubspace = subspaceManager.IsInSameSubspace(player);
                     ImGui.SameLine();
-                    if (sameSubspace)
+                    if (subspaceManager.IsPlayerTimeStale(player))
+                    {
+                        // Shows how long the player's time reading has been stale.
+                        double age = subspaceManager.SecondsSincePlayerTimeUpdate(player);
+                        string label = age < 0 ? "[no data]" : $"[silent {age:F0}s]";
+                        ImGui.TextColored(new float4(1, 0.4f, 0.4f, 1), label);
+                    }
+                    else if (sameSubspace)
                         ImGui.TextColored(new float4(0, 1, 0, 1), "[SYNC]");
                     else
                     {
                         double diff = subspaceManager.GetTimeDifference(player);
                         ImGui.TextColored(new float4(1, 0.5f, 0, 1), $"[{diff:+0.0;-0.0}s]");
-                    }
-                }
-                
-                // Kick button (host only, not for self)
-                if (isHost && player != localPlayer)
-                {
-                    ImGui.SameLine();
-                    if (ImGui.SmallButton($"Kick##{player}"))
-                    {
-                        KickPlayer(player);
                     }
                 }
             }
@@ -285,6 +463,147 @@ namespace KSA.Mods.Multiplayer
             }
         }
         
+        /// <summary>Draws the craft upload picker and the server's shared craft list.</summary>
+        private void DrawCraftSection()
+        {
+            var craftShare = _multiplayerManager.CraftShareManager;
+            if (craftShare == null) return;
+
+            ImGui.Text("Craft Sharing:");
+
+            DrawCraftUploadRow(craftShare);
+            DrawCraftLibraryList(craftShare);
+
+            ImGui.TextDisabled("Downloads appear in the Vehicle Editor under VEHICLE SAVES.");
+
+            if (!string.IsNullOrEmpty(craftShare.StatusText))
+            {
+                float4 colour = craftShare.StatusIsError
+                    ? new float4(1f, 0.5f, 0.5f, 1f)
+                    : new float4(0.6f, 0.9f, 1f, 1f);
+                ImGui.PushStyleColor(ImGuiCol.Text, colour);
+                ImGui.TextWrapped(craftShare.StatusText);
+                ImGui.PopStyleColor();
+            }
+        }
+
+        /// <summary>Draws the picker and buttons for sharing one of this machine's saved craft.</summary>
+        private void DrawCraftUploadRow(CraftShareManager craftShare)
+        {
+            var localCraft = craftShare.LocalCraft;
+
+            if (localCraft.Count == 0)
+            {
+                ImGui.TextDisabled("  No craft found on this machine.");
+            }
+            else
+            {
+                if (_selectedLocalCraft >= localCraft.Count)
+                    _selectedLocalCraft = 0;
+
+                ImGui.Text("Share:");
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(200);
+
+                if (ImGui.BeginCombo("##sharecraft", localCraft[_selectedLocalCraft].DisplayName))
+                {
+                    for (int i = 0; i < localCraft.Count; i++)
+                    {
+                        bool isSelected = _selectedLocalCraft == i;
+                        string label = $"{localCraft[i].DisplayName}  ({localCraft[i].SizeText})";
+                        if (ImGui.Selectable(label, isSelected))
+                            _selectedLocalCraft = i;
+                        if (isSelected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+
+                ImGui.SameLine();
+                if (ImGui.Button("Upload"))
+                    craftShare.UploadCraft(localCraft[_selectedLocalCraft]);
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("Rescan"))
+            {
+                craftShare.RefreshLocalCraft();
+                craftShare.RequestCatalogue();
+            }
+
+            // Sharing what is being flown needs no save file to exist first.
+            string flying = CraftShareManager.CurrentVesselName();
+            if (flying.Length > 0)
+            {
+                if (ImGui.Button($"Share what I'm flying ({flying})"))
+                    craftShare.UploadCurrentVessel();
+            }
+            else
+            {
+                ImGui.TextDisabled("  Fly a vessel to share it directly.");
+            }
+        }
+
+        /// <summary>Draws the craft the server holds, each with a download button.</summary>
+        private void DrawCraftLibraryList(CraftShareManager craftShare)
+        {
+            var catalogue = craftShare.Catalogue;
+            ImGui.Text($"Shared craft ({catalogue.Count}):");
+
+            ImGui.BeginChild("SharedCraftList", new float2(0, 110), ImGuiChildFlags.Borders);
+
+            if (catalogue.Count == 0)
+            {
+                ImGui.TextDisabled("Nothing has been shared on this server yet.");
+                ImGui.EndChild();
+                return;
+            }
+
+            string localPlayer = _multiplayerManager.LocalPlayerName ?? "";
+
+            for (int i = 0; i < catalogue.Count; i++)
+            {
+                var entry = catalogue[i];
+
+                if (craftShare.IsDownloading(entry.CraftId))
+                    ImGui.TextDisabled("...");
+                else if (ImGui.SmallButton($"Get##craft{i}"))
+                    craftShare.DownloadCraft(entry.CraftId);
+
+                ImGui.SameLine();
+
+                string shared = FormatSharedOn(entry.SharedUtcTicks);
+                string line =
+                    $"{entry.CraftName}   by {entry.OwnerPlayerName}   " +
+                    $"{entry.SizeBytes / 1024} KB   {shared}";
+
+                // Marks the craft this player shared.
+                if (entry.OwnerPlayerName.Equals(localPlayer, StringComparison.OrdinalIgnoreCase))
+                    ImGui.TextColored(new float4(0.5f, 1f, 0.5f, 1f), line);
+                else
+                    ImGui.Text(line);
+            }
+
+            ImGui.EndChild();
+        }
+
+        /// <summary>Formats a shared-on time, or blank when the value is not a date.</summary>
+        private static string FormatSharedOn(long utcTicks)
+        {
+            // An exception here would escape between BeginChild and EndChild.
+            if (utcTicks <= 0 || utcTicks > DateTime.MaxValue.Ticks)
+                return string.Empty;
+
+            try
+            {
+                return new DateTime(utcTicks, DateTimeKind.Utc).ToLocalTime().ToString("MM-dd HH:mm");
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return string.Empty;
+            }
+        }
+
         private void DrawSyncSection()
         {
             var subspaceManager = _multiplayerManager.SubspaceManager;
@@ -293,6 +612,18 @@ namespace KSA.Mods.Multiplayer
             double localTime = subspaceManager.GetLocalTime();
             
             ImGui.Text("Time Sync:");
+            
+            var slew = _multiplayerManager.TimeSlew;
+            
+            if (slew != null && slew.IsSlewing)
+            
+            {
+            
+                ImGui.TextColored(new float4(0.4f, 0.8f, 1f, 1f),
+            
+                    $"   Catching up: {slew.CurrentGap:F1}s behind, running slightly fast");
+            
+            }
             ImGui.Text($"  Your Time: {FormatTime(localTime)}");
             
             // Show other players and their time differences
@@ -404,6 +735,8 @@ namespace KSA.Mods.Multiplayer
         
         private void DrawSettingsSection()
         {
+            // Docking controls live in KSA's port context menu, not here.
+
             ImGui.Text("Settings:");
             
             bool showNameTags = MultiplayerSettings.Current.ShowNameTags;
@@ -418,6 +751,18 @@ namespace KSA.Mods.Multiplayer
             {
                 MultiplayerSettings.Current.EnableDebugLogging = enableLogging;
                 MultiplayerSettings.Save();
+            }
+            
+            bool logDockingReadout = MultiplayerSettings.Current.LogDockingReadout;
+            if (ImGui.Checkbox("Trace Docking Readout (per frame)", ref logDockingReadout))
+            {
+                MultiplayerSettings.Current.LogDockingReadout = logDockingReadout;
+                MultiplayerSettings.Save();
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Records docking distance and alignment every frame inside 100 m.\n" +
+                                 "Very large logs - switch on only to diagnose a docking problem.");
             }
         }
 
@@ -446,7 +791,7 @@ namespace KSA.Mods.Multiplayer
                 
                 // Time Info
                 ImGui.Text("=== Time ===");
-                ImGui.Text($"Local SimTime: {Universe.GetElapsedSimTime().Seconds():F3}s");
+                ImGui.Text($"Local SimTime: {Universe.GetElapsedTime().Seconds():F3}s");
                 ImGui.Text($"Simulation Speed: {Universe.SimulationSpeed}x");
                 
                 ImGui.Spacing();
@@ -456,7 +801,7 @@ namespace KSA.Mods.Multiplayer
                 ImGui.Text($"Connected: {_multiplayerManager.IsConnected}");
                 ImGui.Text($"Is Host: {_multiplayerManager.IsHost}");
                 ImGui.Text($"Player Count: {_multiplayerManager.ConnectedPlayers.Count}");
-                // TODO: Add latency per player when implemented
+                // Not implemented: no per-player latency is measured.
                 
                 ImGui.Spacing();
                 
@@ -572,22 +917,18 @@ namespace KSA.Mods.Multiplayer
             }
         }
 
-        private void KickPlayer(string playerName)
-        {
-            ModLogger.Log("Players", $"Kicking player: {playerName}");
-            
-            // Send kick message to player first
-            _multiplayerManager.ChatManager?.SendSystemMessage($"{playerName} was kicked from the server.");
-            
-            // TODO: Send actual kick message via network, then disconnect them
-            // For now just log it
-            ModLogger.Log("Players", $"TODO: Implement actual kick for {playerName}");
-        }
-        
+        // Kicking is a server-console operation ("kick <name>"). There is no
+        // client-side kick: the server has no concept of an administrator, so a
+        // kick request arriving over the wire could not be told apart from any
+        // other client's, and every player would be able to remove every other.
+        // A GUI kick needs that authority model first.
+
         private void TeleportToPlayer(string targetPlayer, float distance)
         {
             ModLogger.Log("GOTO", $"Teleport requested to {targetPlayer} at {distance}m distance");
-            
+
+            try
+            {
             var syncManager = _multiplayerManager.SyncManager;
             var vehicleRenderer = _multiplayerManager.VehicleRenderer;
             
@@ -600,29 +941,19 @@ namespace KSA.Mods.Multiplayer
             // Find the target player's remote vehicle data
             var remoteVehicles = syncManager.GetRemoteVehicles();
             EventSyncManager.RemoteVehicleData? targetData = null;
-            string targetKey = "";
             
             foreach (var kvp in remoteVehicles)
             {
-                if (kvp.Value.OwnerName == targetPlayer)
+                if (kvp.Value.OwnerName == targetPlayer &&
+                    (targetData == null || kvp.Value.LastUpdate > targetData.LastUpdate))
                 {
                     targetData = kvp.Value;
-                    targetKey = kvp.Key;
-                    break;
                 }
             }
             
             if (targetData == null)
             {
                 ModLogger.Log("GOTO", $"ERROR: Could not find vehicle data for {targetPlayer}");
-                return;
-            }
-            
-            // Get the actual remote vehicle object to get its CURRENT rendered position
-            Vehicle? remoteVehicle = vehicleRenderer.GetRemoteVehicle(targetKey);
-            if (remoteVehicle == null)
-            {
-                ModLogger.Log("GOTO", $"ERROR: Remote vehicle object not found for {targetKey}");
                 return;
             }
             
@@ -640,68 +971,112 @@ namespace KSA.Mods.Multiplayer
             if (parent == null)
             {
                 ModLogger.Log("GOTO", $"ERROR: Parent body {parentId} not found");
+                TimedAlert.Create($"Cannot teleport: {parentId} was not found", Color.Red, 4.0);
                 return;
             }
-            
-            // Get CURRENT rendered position from remote vehicle's orbit (not stale network data)
-            // This accounts for clock drift - orbit has propagated since last network update
-            var targetPos = remoteVehicle.Orbit.StateVectors.PositionCci;
-            var targetVel = remoteVehicle.Orbit.StateVectors.VelocityCci;
-            
-            // Prograde unit vector
-            var progradeDir = targetVel.Normalized();
-            
-            // Offset position (behind the target in prograde direction)
-            var offsetPos = targetPos - progradeDir * distance;
-            
-            // Use LOCAL time for teleporting LOCAL vehicle
-            // (Remote vehicles use sender's time, but our vehicle must use our time)
-            SimTime localTime = Universe.GetElapsedSimTime();
-            
-            // Create new orbit for local vehicle at offset position with same velocity
+
+            if (localVehicle.Parent?.Id != parent.Id)
+            {
+                ModLogger.Log("GOTO", $"ERROR: Target orbits {parent.Id}, local vehicle orbits {localVehicle.Parent?.Id}");
+                TimedAlert.Create("Teleport requires both ships to orbit the same body", Color.Red, 5.0);
+                return;
+            }
+
+            UniverseTime localTime = Universe.GetElapsedTime();
+            double3 targetPos;
+            double3 targetVel;
+            double3 offsetDirection;
+
+            if (targetData.LastSituation >= 2)
+            {
+                // Convert the surface state from the body-fixed frame.
+                doubleQuat ccf2Cci = parent.GetCcf2Cci(localTime);
+                targetPos = targetData.TargetPositionCcf.Transform(ccf2Cci);
+                double3 omega = new double3(0, 0, parent.GetAngularVelocity());
+                targetVel = targetData.TargetVelocityCcf.Transform(ccf2Cci) +
+                    double3.Cross(omega, targetPos);
+
+                double3 horizontalDirection = targetData.TargetVelocityCcf;
+                if (horizontalDirection.Length() < 0.1)
+                {
+                    double3 up = targetData.TargetPositionCcf.Normalized();
+                    double3 reference = Math.Abs(up.Z) < 0.9
+                        ? new double3(0, 0, 1)
+                        : new double3(0, 1, 0);
+                    horizontalDirection = double3.Cross(up, reference);
+                }
+
+                offsetDirection = horizontalDirection.Normalized().Transform(ccf2Cci);
+            }
+            else
+            {
+                // Propagate orbital state from the sender epoch to our current time.
+                UniverseTime senderTime = new UniverseTime(targetData.SenderStateTimeSeconds);
+                Orbit targetOrbit = Orbit.CreateFromStateCci(
+                    parent, senderTime, targetData.TargetPosition,
+                    targetData.TargetVelocity, localVehicle.OrbitColor);
+                StateVectors targetState = targetOrbit.GetStateVectorsAt(localTime);
+                targetPos = targetState.PositionCci;
+                targetVel = targetState.VelocityCci;
+                offsetDirection = targetVel.Normalized();
+            }
+
+            double3 offsetPos = targetPos - offsetDirection * distance;
+
+            // Teleport the vehicle onto the offset orbit.
             Orbit orbit = Orbit.CreateFromStateCci(parent, localTime, offsetPos, targetVel, localVehicle.OrbitColor);
-            localVehicle.SetFlightPlan(new FlightPlan(orbit, new KeyHash((uint)localVehicle.Id.GetHashCode())));
-            localVehicle.UpdatePerFrameData();
-            
-            // CRITICAL: Update KinematicStates.Time to match the new orbit's state time
-            // Without this, KSA throws "Populating kinematic states from outdated analytic states"
+            localVehicle.Teleport(orbit, null, null);
             UpdateVehicleKinematicStates(localVehicle, orbit.StateVectors);
+            localVehicle.UpdatePerFrameData();
+            Universe.CurrentSystem?.UpdatePerFrameData();
+
+            localVehicle.GetPhysicsStatesMutable().GetStatesCci(
+                out double3 actualPosition, out _, out _);
+            double teleportError = (actualPosition - offsetPos).Length();
+            if (teleportError > Math.Max(25.0, distance * 2.0))
+            {
+                ModLogger.Log("GOTO",
+                    $"Native teleport verification failed by {teleportError:F1}m; applying analytic fallback");
+                localVehicle.SetFlightPlan(
+                    new FlightPlan(orbit, new KeyHash((uint)localVehicle.Id.GetHashCode())));
+                UpdateVehicleKinematicStates(localVehicle, orbit.StateVectors);
+                localVehicle.UpdatePerFrameData();
+                Universe.CurrentSystem?.UpdatePerFrameData();
+                localVehicle.GetPhysicsStatesMutable().GetStatesCci(
+                    out actualPosition, out _, out _);
+                teleportError = (actualPosition - offsetPos).Length();
+            }
+
+            if (teleportError > Math.Max(25.0, distance * 2.0))
+                throw new InvalidOperationException(
+                    $"KSA kept the ship {teleportError:F0} m from the requested destination.");
             
             ModLogger.Log("GOTO", $"SUCCESS: Teleported to {targetPlayer} at {distance}m distance");
             ModLogger.Log("GOTO", $"  Target pos: ({targetPos.X:F0},{targetPos.Y:F0},{targetPos.Z:F0})");
             ModLogger.Log("GOTO", $"  New pos: ({offsetPos.X:F0},{offsetPos.Y:F0},{offsetPos.Z:F0})");
             ModLogger.Log("GOTO", $"  State time: {localTime.Seconds():F3}s");
+            ModLogger.Log("GOTO", $"  Verified error: {teleportError:F2}m");
             
             // Force remote vehicle to resync visual to network position
             targetData.SituationChanged = true;
+            Universe.CurrentSystem?.UpdatePerFrameData();
+            TimedAlert.Create($"Teleported near {targetPlayer}", Color.Green, 4.0);
+            }
+            catch (Exception ex)
+            {
+                ModLogger.Log("GOTO", $"ERROR: Teleport failed: {ex}");
+                TimedAlert.Create($"Teleport failed: {ex.Message}", Color.Red, 5.0);
+            }
         }
-        
-        /// <summary>
-        /// Update vehicle's KinematicStates to match a new orbit.
-        /// Uses reflection to access private _lastKinematicStates field.
-        /// </summary>
+
+        /// <summary>Updates the vehicle's physics states to match a new orbit.</summary>
         private void UpdateVehicleKinematicStates(Vehicle vehicle, StateVectors stateVectors)
         {
             try
             {
-                var kinematicField = typeof(Vehicle).GetField("_lastKinematicStates",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                
-                if (kinematicField == null) return;
-                
-                object? kinematicObj = kinematicField.GetValue(vehicle);
-                if (kinematicObj == null) return;
-                
-                KinematicStates kinematic = (KinematicStates)kinematicObj;
-                
-                // Sync times to prevent "outdated analytic states" error
-                kinematic.Time = stateVectors.StateTime;
-                kinematic.PositionPhys = stateVectors.PositionCci;
-                kinematic.VelocityPhys = stateVectors.VelocityCci;
-                kinematic.PhysFrame = PhysicsFrame.Cci;
-                
-                kinematicField.SetValue(vehicle, kinematic);
-                ModLogger.Log("GOTO", $"Updated KinematicStates.Time to {stateVectors.StateTime.Seconds():F3}s");
+                vehicle.GetPhysicsStatesMutable().UpdateFromAnalytic(
+                    vehicle.Orbit, in stateVectors, vehicle.Body2Cce, vehicle.BodyRates, vehicle.Situation);
+                ModLogger.Log("GOTO", $"Updated physics states to {stateVectors.StateTime.Seconds():F3}s");
             }
             catch (Exception ex)
             {
@@ -715,7 +1090,9 @@ namespace KSA.Mods.Multiplayer
             {
                 ImGui.Spacing();
                 ImGui.Text(ModInfo.FullName);
-                ImGui.Text($"Author: {ModInfo.Author}");
+                // Show the copyright and license notice.
+                ImGui.Text(ModInfo.Copyright);
+                ImGui.Text(ModInfo.License);
                 ImGui.Spacing();
                 
                 ImGui.Text("GitHub:");
@@ -730,5 +1107,6 @@ namespace KSA.Mods.Multiplayer
                 ImGui.Spacing();
             }
         }
+
     }
 }

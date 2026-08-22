@@ -7,33 +7,23 @@ Multiplayer mod for Kitten Space Agency v3103+
 ## Requirements
 
 - KSA version 3103 or later
-- **[StarMap Mod Loader](https://github.com/StarMapLoader/StarMap)** (REQUIRED)
-  - Install to `C:\Program Files (x86)\StarMap\`
-- **.NET 10 Desktop Runtime** (REQUIRED)
-  - Download from: https://dotnet.microsoft.com/en-us/download/dotnet/10.0
-  - Select ".NET Desktop Runtime" for Windows x64
+- Windows 10 or later
+- Internet access during installation
 
 ## Installation
 
 ### Option 1: Installer (Recommended)
-1. **Install StarMap Mod Loader first!**
-2. **Install .NET 10 Desktop Runtime**
-3. Run `KSA-Multiplayer-Setup.exe`
-4. Select your KSA installation folder
-5. Two desktop shortcuts will be created:
-   - **KSA with Mods** - Launch StarMap mod loader
-   - **KSA Dedicated Server** - Run a multiplayer server
+1. Run `KSA-Multiplayer-Setup-v0.3.0.exe`.
+2. Select your KSA installation folder.
+3. Start the game using the **KSA with Mods** desktop shortcut.
+
+The installer adds the client mod, a pinned StarMap loader, and a private pinned
+.NET runtime. It does not run or install a dedicated server on the player's PC.
 
 ### Option 2: Manual Install
-1. Copy `Launcher\*` to `KSA\Launcher\`
-2. Copy `Content\Multiplayer\*` to `KSA\Content\Multiplayer\`
-3. Copy `Server\*` to KSA root folder
-4. Add to `Content\manifest.toml`:
-   ```toml
-   [[mods]]
-   id = "Multiplayer"
-   enabled = true
-   ```
+Run `scripts\Update-KSAMultiplayer.ps1` from the extracted source or release
+bundle. The script requests administrator access and performs the same managed
+client installation as Setup.
 
 ## Architecture
 
@@ -43,9 +33,9 @@ This mod uses a **dedicated server** architecture:
 
 ## Running a Server
 
-1. Double-click "KSA Dedicated Server" shortcut
-2. Or run `RunServer.cmd` from KSA folder
-3. Edit `server_config.json` to customize:
+The server is a separate deployment and is not installed by the player Setup.
+Use the Docker deployment in `Server/` and edit `server_config.json` to
+customize it:
 
 ```json
 {
@@ -89,8 +79,7 @@ To allow players outside your network to connect:
 
 ### Time Sync & Subspace
 Players can time warp independently:
-- **In Sync** - See each other's vessels in 3D
-- **Out of Sync** - Vessels appear as "ghosts" (map only)
+- Remote vessels remain visible in 3D in every subspace
 - **Sync Button** - Jump forward to match another player's time
 
 
@@ -102,7 +91,7 @@ Players can time warp independently:
 ## Log Files
 
 When debug logging is enabled, logs are in:
-`Content\Multiplayer\logs\`
+`%LOCALAPPDATA%\KSA-Multiplayer\logs\`
 
 ## Troubleshooting
 
@@ -149,7 +138,26 @@ KSA-Multiplayer-Package/
 
 ## Version History
 
-### v0.2.0 (Current)
+### v0.3.0 (Current)
+
+Successor to v0.2.1, the last published release. Consolidates all work since,
+including changes previously listed under 0.3.x and 0.4.x numbers that were
+never released from this repository. See CHANGELOG.md for the full list.
+
+- Cross-player docking, with control handed to the initiator and returned on
+  undock; ownership and each player's camera stay with their own craft
+- Remote craft advanced to the frame's instant, so distances between a local and
+  a remote vessel refer to one moment rather than two
+- Empty authoritative shared universe with late-join design and state replay
+- Compressed part-tree transfer so other clients reconstruct the actual craft
+- Player chat delivered through the dedicated server
+- Join-time name validation: no placeholder, duplicate, empty or separator names
+- Relicensed to PolyForm Noncommercial 1.0.0
+- Smooths nearby vessels using real elapsed time, coalesces buffered movement to
+  the newest snapshot, and runs a 15 Hz nearby update rate
+- Deployment tooling
+
+### v0.2.0
 - **Dedicated server architecture** - Server runs independently (requires KSA installation for game DLLs)
 - Server-authoritative time synchronization
 - Password protection with timeout

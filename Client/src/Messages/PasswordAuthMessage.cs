@@ -24,7 +24,7 @@ namespace KSA.Mods.Multiplayer.Messages
         
         public override void Execute()
         {
-            // Handled by server
+            // Does nothing on the client.
         }
     }
 }

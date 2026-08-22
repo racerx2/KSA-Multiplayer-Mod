@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using KSA.Networking;
 using KSA.Networking.Messages;
 using KSA.Mods.Multiplayer.Messages;
+using Brutal.ImGuiApi;
 
 namespace KSA.Mods.Multiplayer
 {
@@ -11,13 +14,24 @@ namespace KSA.Mods.Multiplayer
         private static Harmony? _harmony;
         private const string LogName = "Network";
         
+        // 140, 201 and 203 were MultiplayerChat, TimeSync and OrbitSync. Chat
+        // travels on KSA's own chat message, and time is carried by the
+        // heartbeat, so nothing ever sent any of the three. Leave the numbers
+        // retired rather than reusing them: a client from before their removal
+        // can still put them on the wire.
         public const byte MSG_ID_VEHICLE_STATE = 200;
-        public const byte MSG_ID_TIME_SYNC = 201;
         public const byte MSG_ID_VEHICLE_DESIGN = 202;
-        public const byte MSG_ID_ORBIT_SYNC = 203;
-        public const byte MSG_ID_MULTIPLAYER_CHAT = 140;
         public const byte MSG_ID_SYSTEM_CHECK = 204;
         public const byte MSG_ID_SERVER_HEARTBEAT = 205;
+        public const byte MSG_ID_CRAFT_UPLOAD = 207;
+        public const byte MSG_ID_AUTH_STATUS = 208;
+        public const byte MSG_ID_CRAFT_LIBRARY = 209;
+        public const byte MSG_ID_CRAFT_REQUEST = 210;
+        public const byte MSG_ID_VEHICLE_REMOVE = 211;
+        public const byte MSG_ID_PLAYER_ROSTER = 212;
+        public const byte MSG_ID_VESSEL_STRUCTURE = 213;
+        public const byte MSG_ID_CRAFT_DATA = 214;
+        public const byte MSG_ID_UNDOCK_REQUEST = 215;
         
         // Heartbeat tracking
         private static DateTime _lastHeartbeatReceived = DateTime.MinValue;
@@ -26,15 +40,19 @@ namespace KSA.Mods.Multiplayer
         
         // Connection error tracking - captures server messages before disconnect
         private static string? _lastServerMessage = null;
-        public static string? LastServerMessage => _lastServerMessage;
         
         public static event Action<string>? OnChatMessageReceived;
         public static event Action<VehicleStateMessage>? OnVehicleStateReceived;
-        public static event Action<TimeSyncMessage>? OnTimeSyncReceived;
         public static event Action<VehicleDesignSyncMessage>? OnVehicleDesignSyncReceived;
-        public static event Action<OrbitSyncMessage>? OnOrbitSyncReceived;
+        public static event Action<VesselStructureMessage>? OnVesselStructureReceived;
         public static event Action<SystemCheckMessage>? OnSystemCheckReceived;
         public static event Action<ServerHeartbeatMessage>? OnServerHeartbeatReceived;
+        public static event Action<AuthStatusMessage>? OnAuthStatusReceived;
+        public static event Action<VehicleRemoveMessage>? OnVehicleRemoveReceived;
+        public static event Action<PlayerRosterMessage>? OnPlayerRosterReceived;
+        public static event Action<CraftLibraryMessage>? OnCraftLibraryReceived;
+        public static event Action<CraftDataMessage>? OnCraftDataReceived;
+        public static event Action<UndockRequestMessage>? OnUndockRequestReceived;
         
         private static void Log(string msg) => ModLogger.Log(LogName, msg);
         
@@ -59,9 +77,19 @@ namespace KSA.Mods.Multiplayer
                     var deserialisePrefix = AccessTools.Method(typeof(NetworkPatches), nameof(DeserialisePrefix));
                     _harmony.Patch(deserialiseMethod, prefix: new HarmonyMethod(deserialisePrefix));
                 }
+
+                var programMenusHook = AccessTools.Method(
+                    typeof(KSA.Program), "DrawProgramMenusHook");
+                if (programMenusHook != null)
+                {
+                    var menuPostfix = AccessTools.Method(
+                        typeof(NetworkPatches), nameof(DrawProgramMenusHookPostfix));
+                    _harmony.Patch(
+                        programMenusHook, postfix: new HarmonyMethod(menuPostfix));
+                    Log("Added Multiplayer menu beside HUD");
+                }
                 
-                // CRITICAL: Patch ExecuteJoinGameResponse to skip Universe.DeserializeSave
-                // Each player keeps their own universe - we only sync vehicle data, not universe state
+                // Patch ExecuteJoinGameResponse to skip universe deserialization.
                 var executeJoinMethod = AccessTools.Method(typeof(NetworkClient), "ExecuteJoinGameResponse");
                 if (executeJoinMethod != null)
                 {
@@ -95,8 +123,7 @@ namespace KSA.Mods.Multiplayer
         {
             if (!string.IsNullOrEmpty(__instance.Message))
             {
-                // Capture server messages for connection error display
-                // These come before disconnect and need to be shown in UI
+                // Capture server messages for connection error display.
                 if (__instance.Message.StartsWith("[Server]"))
                 {
                     _lastServerMessage = __instance.Message.Replace("[Server] ", "").Trim();
@@ -107,14 +134,26 @@ namespace KSA.Mods.Multiplayer
             }
             return true;
         }
+
+        public static void DrawProgramMenusHookPostfix()
+        {
+            if (!ImGui.BeginMenu("Multiplayer"))
+                return;
+
+            MultiplayerWindow? window = ModEntry.GetMultiplayerWindow();
+            if (ImGui.MenuItem("Open Multiplayer"))
+                window?.SetShown(true);
+
+            if (window?.IsShown == true && ImGui.MenuItem("Hide Multiplayer"))
+                window.SetShown(false);
+
+            ImGui.EndMenu();
+        }
         
-        /// <summary>
-        /// Replace DispatchToAllPlayers to suppress the "non authority" debug warning.
-        /// Does the same thing as original but without the log spam.
-        /// </summary>
+        /// <summary>Replaces DispatchToAllPlayers without the non-authority warning log.</summary>
         public static bool DispatchToAllPlayersPrefix(NetworkPeer __instance, GameMessage message)
         {
-            // Skip the warning log, just do what the original does
+            // Execute the message locally without the warning log.
             if (Players.HasLocalPlayer)
             {
                 message.Execute();
@@ -128,28 +167,75 @@ namespace KSA.Mods.Multiplayer
             return false; // Skip original method
         }
         
+        /// <summary>
+        /// Stands in for a message that could not be read. KSA's OnPeerPacket calls
+        /// Shutdown() when deserialisation returns null, from inside the packet loop that
+        /// is still holding the packet, which disposes the RakNet instance out from under
+        /// it. Handing back a message whose Execute does nothing avoids that.
+        /// </summary>
+        private sealed class UnreadableMessage : GameMessage
+        {
+            public UnreadableMessage(byte messageId) : base((GameMessageId)messageId) { }
+
+            public override void Execute() { }
+        }
+
+        /// <summary>Reads the mod's own messages, and never lets a bad one reach KSA.</summary>
         public static bool DeserialisePrefix(DecodedPacket packet, ref GameMessage? __result)
         {
             byte messageId = (byte)packet.MessageId;
-            
+
+            try
+            {
+                if (!DispatchModMessage(messageId, packet, ref __result))
+                {
+                    // MemoryPack returns null for some corrupt payloads rather than
+                    // throwing, and a null result is what makes KSA shut down. Verified
+                    // in Tests/Program.cs: 0xFF bytes deserialise to null, a truncated
+                    // payload throws.
+                    if (__result == null)
+                    {
+                        ModLogger.LogAlways(LogName,
+                            $"DISCARDED unreadable message {messageId}");
+                        __result = new UnreadableMessage(messageId);
+                    }
+
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                // A truncated or corrupt payload throws out of MemoryPack. Unhandled it
+                // would unwind through ProcessAllWaitingPackets and kill the process.
+                ModLogger.LogAlways(LogName,
+                    $"DISCARDED malformed message {messageId}: {ex.GetType().Name}: {ex.Message}");
+                __result = new UnreadableMessage(messageId);
+                return false;
+            }
+
+            // KSA deserialises its own ids itself.
+            if (messageId >= (byte)GameMessageId.FirstGameMessageId &&
+                messageId <= (byte)GameMessageId.PlayerStatusChanged)
+                return true;
+
+            // Anything else reaches KSA's "No deserialisation for ..." throw, which unwinds
+            // out of the packet loop just the same. Drop it here instead.
+            ModLogger.LogThrottled(LogName, "UNKNOWN_MSG",
+                $"Discarded unknown message id {messageId}");
+            __result = new UnreadableMessage(messageId);
+            return false;
+        }
+
+        /// <summary>Returns true when the message is KSA's to deserialise, not the mod's.</summary>
+        private static bool DispatchModMessage(
+            byte messageId, DecodedPacket packet, ref GameMessage? __result)
+        {
             // Throttle high-frequency deserialize logging (only for mod messages)
             if (messageId >= 140)
                 ModLogger.LogThrottled(LogName, "DESERIALIZE", $"DESERIALIZE: MessageId={messageId}");
             
             switch (messageId)
             {
-                case MSG_ID_MULTIPLAYER_CHAT:
-                    var chatMessage = GameMessage.Deserialise<MultiplayerChatMessage>(packet.Payload);
-                    if (chatMessage != null)
-                    {
-                        chatMessage.Id = (GameMessageId)MSG_ID_MULTIPLAYER_CHAT;
-                        chatMessage.Execute();
-                        if (Network.ActivePeer is NetworkServer)
-                            Network.ActivePeer.DispatchToAllPlayers(chatMessage);
-                    }
-                    __result = chatMessage;
-                    return false;
-                    
                 case MSG_ID_VEHICLE_STATE:
                     var stateMessage = GameMessage.Deserialise<VehicleStateMessage>(packet.Payload);
                     if (stateMessage != null)
@@ -157,7 +243,7 @@ namespace KSA.Mods.Multiplayer
                         stateMessage.Id = (GameMessageId)MSG_ID_VEHICLE_STATE;
                         // Throttle high-frequency state message logging
                         ModLogger.LogThrottled(LogName, "STATE_MSG", 
-                            $"STATE MSG - Owner: {stateMessage.OwnerPlayerName}, Engine: {stateMessage.EngineOn}, Throttle: {stateMessage.EngineThrottle:F2}, RCS: {stateMessage.ThrusterFlags}");
+                            $"STATE MSG - Owner: {stateMessage.OwnerPlayerName}, Engine: {stateMessage.EngineOn}, Throttle: {stateMessage.EngineThrottle:F2}, RCS: {stateMessage.ThrusterFlags}, Nozzles: {stateMessage.RocketThrusts?.Length ?? 0}");
                         OnVehicleStateReceived?.Invoke(stateMessage);
                         if (Network.ActivePeer is NetworkServer)
                         {
@@ -168,20 +254,35 @@ namespace KSA.Mods.Multiplayer
                     __result = stateMessage;
                     return false;
                     
-                case MSG_ID_TIME_SYNC:
-                    Log($"TIME_SYNC MSG RECEIVED");
-                    var timeSyncMessage = GameMessage.Deserialise<TimeSyncMessage>(packet.Payload);
-                    if (timeSyncMessage != null)
+                case MSG_ID_VESSEL_STRUCTURE:
+                    var structureMessage = GameMessage.Deserialise<VesselStructureMessage>(packet.Payload);
+                    if (structureMessage != null)
                     {
-                        timeSyncMessage.Id = (GameMessageId)MSG_ID_TIME_SYNC;
-                        Log($"TIME_SYNC PARSED - SimTime={timeSyncMessage.SimulationTimeSeconds:F3}s, Seq={timeSyncMessage.SequenceNumber}");
-                        OnTimeSyncReceived?.Invoke(timeSyncMessage);
+                        structureMessage.Id = (GameMessageId)MSG_ID_VESSEL_STRUCTURE;
+                        Log($"STRUCTURE MSG - {(structureMessage.Action == 0 ? "SPLIT" : "DOCK")} " +
+                            $"from {structureMessage.PlayerName}: {structureMessage.PrimaryUid}");
+                        OnVesselStructureReceived?.Invoke(structureMessage);
                         if (Network.ActivePeer is NetworkServer)
-                            Network.ActivePeer.DispatchToAllPlayers(timeSyncMessage);
+                            Network.ActivePeer.DispatchToAllPlayers(structureMessage);
                     }
-                    __result = timeSyncMessage;
+                    __result = structureMessage;
                     return false;
-                    
+
+                case MSG_ID_UNDOCK_REQUEST:
+                    var undockMessage = GameMessage.Deserialise<UndockRequestMessage>(packet.Payload);
+                    if (undockMessage != null)
+                    {
+                        undockMessage.Id = (GameMessageId)MSG_ID_UNDOCK_REQUEST;
+                        Log($"UNDOCK MSG - status={undockMessage.Status} #{undockMessage.RequestId} " +
+                            $"{undockMessage.RequesterPlayerName} -> {undockMessage.OwnerPlayerName} " +
+                            $"({undockMessage.StackUid})");
+                        OnUndockRequestReceived?.Invoke(undockMessage);
+                        if (Network.ActivePeer is NetworkServer)
+                            Network.ActivePeer.DispatchToAllPlayers(undockMessage);
+                    }
+                    __result = undockMessage;
+                    return false;
+
                 case MSG_ID_VEHICLE_DESIGN:
                     Log($"DESIGN MSG RECEIVED - MessageId: {messageId}");
                     var designMessage = GameMessage.Deserialise<VehicleDesignSyncMessage>(packet.Payload);
@@ -202,24 +303,7 @@ namespace KSA.Mods.Multiplayer
                     }
                     __result = designMessage;
                     return false;
-                    
-                case MSG_ID_ORBIT_SYNC:
-                    Log($"ORBIT SYNC MSG RECEIVED - MessageId: {messageId}");
-                    var orbitMessage = GameMessage.Deserialise<OrbitSyncMessage>(packet.Payload);
-                    if (orbitMessage != null)
-                    {
-                        Log($"ORBIT SYNC PARSED - Player: {orbitMessage.PlayerName}, IsAck: {orbitMessage.IsAcknowledgment}");
-                        orbitMessage.Id = (GameMessageId)MSG_ID_ORBIT_SYNC;
-                        OnOrbitSyncReceived?.Invoke(orbitMessage);
-                        if (Network.ActivePeer is NetworkServer)
-                        {
-                            Log($"ORBIT SYNC RELAY - Server relaying to all players");
-                            Network.ActivePeer.DispatchToAllPlayers(orbitMessage);
-                        }
-                    }
-                    __result = orbitMessage;
-                    return false;
-                    
+
                 case MSG_ID_SYSTEM_CHECK:
                     Log($"SYSTEM CHECK MSG RECEIVED - MessageId: {messageId}");
                     var systemCheckMessage = GameMessage.Deserialise<SystemCheckMessage>(packet.Payload);
@@ -228,7 +312,7 @@ namespace KSA.Mods.Multiplayer
                         Log($"SYSTEM CHECK - Host System: {systemCheckMessage.HostSystemId} ({systemCheckMessage.HostSystemDisplayName})");
                         systemCheckMessage.Id = (GameMessageId)MSG_ID_SYSTEM_CHECK;
                         OnSystemCheckReceived?.Invoke(systemCheckMessage);
-                        // DO NOT relay system check - it's only sent host -> client
+                        // System check is not relayed.
                     }
                     __result = systemCheckMessage;
                     return false;
@@ -249,36 +333,105 @@ namespace KSA.Mods.Multiplayer
                     }
                     __result = heartbeatMsg;
                     return false;
+
+                case MSG_ID_AUTH_STATUS:
+                    var authStatus = GameMessage.Deserialise<AuthStatusMessage>(packet.Payload);
+                    if (authStatus != null)
+                    {
+                        authStatus.Id = (GameMessageId)MSG_ID_AUTH_STATUS;
+                        Log($"AUTH STATUS: Success={authStatus.Success}, Player={authStatus.PlayerName}");
+                        OnAuthStatusReceived?.Invoke(authStatus);
+                    }
+                    __result = authStatus;
+                    return false;
+
+                case MSG_ID_VEHICLE_REMOVE:
+                    var vehicleRemove = GameMessage.Deserialise<VehicleRemoveMessage>(packet.Payload);
+                    if (vehicleRemove != null)
+                    {
+                        vehicleRemove.Id = (GameMessageId)MSG_ID_VEHICLE_REMOVE;
+                        OnVehicleRemoveReceived?.Invoke(vehicleRemove);
+                    }
+                    __result = vehicleRemove;
+                    return false;
+
+                case MSG_ID_PLAYER_ROSTER:
+                    var roster = GameMessage.Deserialise<PlayerRosterMessage>(packet.Payload);
+                    if (roster != null)
+                    {
+                        roster.Id = (GameMessageId)MSG_ID_PLAYER_ROSTER;
+                        OnPlayerRosterReceived?.Invoke(roster);
+                    }
+                    __result = roster;
+                    return false;
+
+                case MSG_ID_CRAFT_LIBRARY:
+                    var craftLibrary = GameMessage.Deserialise<CraftLibraryMessage>(packet.Payload);
+                    if (craftLibrary != null)
+                    {
+                        craftLibrary.Id = (GameMessageId)MSG_ID_CRAFT_LIBRARY;
+                        Log($"CRAFT LIBRARY: {craftLibrary.Entries?.Length ?? 0} craft");
+                        OnCraftLibraryReceived?.Invoke(craftLibrary);
+                    }
+                    __result = craftLibrary;
+                    return false;
+
+                case MSG_ID_CRAFT_DATA:
+                    var craftData = GameMessage.Deserialise<CraftDataMessage>(packet.Payload);
+                    if (craftData != null)
+                    {
+                        craftData.Id = (GameMessageId)MSG_ID_CRAFT_DATA;
+                        Log(string.IsNullOrEmpty(craftData.Error)
+                            ? $"CRAFT DATA: {craftData.CraftName} by {craftData.OwnerPlayerName}, " +
+                              $"{craftData.CompressedVehicleXml?.Length ?? 0} bytes"
+                            : $"CRAFT ERROR: {craftData.Error}");
+                        OnCraftDataReceived?.Invoke(craftData);
+                    }
+                    __result = craftData;
+                    return false;
                     
                 default:
                     return true;
             }
         }
         
-        /// <summary>
-        /// Skip Universe.DeserializeSave when joining a game.
-        /// Each player keeps their own universe state and simulation time.
-        /// We only use KSA networking for the transport layer (RakNet).
-        /// Vehicle data is exchanged separately via our sync system.
-        /// </summary>
+        /// <summary>Why the server refused the last join, or null.</summary>
+        public static string? JoinRefusedReason { get; private set; }
+
+        /// <summary>Raised with the server's reason when a join is refused.</summary>
+        public static event Action<string>? OnJoinRefused;
+
+        /// <summary>Clears the recorded join refusal.</summary>
+        public static void ClearJoinRefusal() => JoinRefusedReason = null;
+
+        /// <summary>Skips Universe.DeserializeSave when joining a game.</summary>
         public static bool ExecuteJoinGameResponsePrefix(JoinGameResponseMessage message, NetworkClient __instance)
         {
             if (!message.Accepted)
             {
-                Log($"Join game denied by server: {message.Message}");
-                // Let original handle the denial/shutdown
-                return true;
+                // The stock handler calls Shutdown() from here, which disposes the RakNet
+                // instance that ProcessAllWaitingPackets is still holding a packet from.
+                // That loop then calls DeallocatePacket and Receive on freed memory and
+                // the process dies. The refusal is recorded instead, and the disconnect
+                // is carried out a frame later, outside the packet loop.
+                JoinRefusedReason = string.IsNullOrWhiteSpace(message.Message)
+                    ? "The server refused the connection."
+                    : message.Message.Trim();
+
+                Log($"Join game denied by server: {JoinRefusedReason}");
+                OnJoinRefused?.Invoke(JoinRefusedReason);
+                return false;
             }
             
             Log("Join game accepted - keeping local universe (skipping DeserializeSave)");
             
-            // Set the players list - this is safe and needed
-            Players.Set(message.Players);
+            // Set the players list.
+            Players.Set(message.Players?
+                .Where(player => player.Value != null)
+                .ToList() ?? new List<KeyValuePair<ClientId, PlayerInfo>>());
             Log($"Players list updated: {Players.Count} players");
             
-            // SKIP Universe.DeserializeSave(message.UniverseData)
-            // SKIP Universe.OnLoaded()
-            // Each player keeps their own universe, own vehicles, own sim time
+            // Universe deserialization and OnLoaded are skipped.
             
             // Set _netNetStatus to InGame (value = 2) via reflection
             var statusField = AccessTools.Field(typeof(NetworkClient), "_netNetStatus");
@@ -300,9 +453,7 @@ namespace KSA.Mods.Multiplayer
             _lastHeartbeatReceived = DateTime.MinValue;
         }
         
-        /// <summary>
-        /// Get and clear the last server message (for displaying connection errors)
-        /// </summary>
+        /// <summary>Returns and clears the last server message.</summary>
         public static string? ConsumeServerMessage()
         {
             var msg = _lastServerMessage;
@@ -310,9 +461,7 @@ namespace KSA.Mods.Multiplayer
             return msg;
         }
         
-        /// <summary>
-        /// Clear the server message without returning it
-        /// </summary>
+        /// <summary>Clears the last server message.</summary>
         public static void ClearServerMessage()
         {
             _lastServerMessage = null;

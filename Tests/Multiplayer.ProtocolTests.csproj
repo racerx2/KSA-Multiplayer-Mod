@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Client\KSA-Multiplayer-Mod.csproj" />
+    <ProjectReference Include="..\Server\KSA-Dedicated-Server.csproj" />
+    <PackageReference Include="MemoryPack" Version="1.21.4" />
+    <Reference Include="KSA">
+      <HintPath>$(MSBuildThisFileDirectory)../lib/KSA.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- The test host loads the real game assemblies, so every referenced DLL
+       must sit beside the test binary. -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../lib/*.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
+  </ItemGroup>
+</Project>

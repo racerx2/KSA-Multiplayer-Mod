@@ -1,69 +1,28 @@
+using System.Runtime.Loader;
 using KSA.Multiplayer.DedicatedServer;
 
-Console.WriteLine("========================================");
-Console.WriteLine("  KSA Multiplayer Dedicated Server");
-Console.WriteLine("========================================");
-Console.WriteLine();
-
-// Load config from file
-var config = ServerConfig.Load();
-
-string logDir = Path.Combine(AppContext.BaseDirectory, "logs");
-
-// Parse command line args (override config values)
-for (int i = 0; i < args.Length; i++)
+// Locates the local KSA installation before any KSA type is loaded.
+string? gameDir = KsaInstall.Locate(args);
+if (gameDir == null)
 {
-    if (args[i] == "-port" && i + 1 < args.Length)
-    {
-        if (int.TryParse(args[++i], out int port))
-            config.Port = port;
-    }
-    else if (args[i] == "-maxplayers" && i + 1 < args.Length)
-    {
-        if (int.TryParse(args[++i], out int max))
-            config.MaxPlayers = max;
-    }
-    else if (args[i] == "-logdir" && i + 1 < args.Length)
-        logDir = args[++i];
-    else if (args[i] == "-system" && i + 1 < args.Length)
-        config.SystemId = args[++i];
-    else if (args[i] == "-systemname" && i + 1 < args.Length)
-        config.SystemDisplayName = args[++i];
-    else if (args[i] == "-name" && i + 1 < args.Length)
-        config.ServerName = args[++i];
+    Console.WriteLine("ERROR: Could not find a Kitten Space Agency installation.");
+    Console.WriteLine("The dedicated server loads the game's assemblies from your local");
+    Console.WriteLine("KSA install. Set \"gamePath\" in server_config.json, or pass -gamepath <dir>.");
+    return 1;
 }
 
-// Save config (persists any command line overrides)
-config.Save();
-
-// Initialize logging
-ServerLogger.Initialize(logDir);
-
-Console.WriteLine($"Server: {config.ServerName}");
-Console.WriteLine($"Port: {config.Port}");
-Console.WriteLine($"Max Players: {config.MaxPlayers}");
-Console.WriteLine($"System: {config.SystemId} ({config.SystemDisplayName})");
-Console.WriteLine($"Logging to: {logDir}");
-Console.WriteLine();
-
-using var server = new DedicatedServer(config);
-
-// Handle Ctrl+C
-Console.CancelKeyPress += (s, e) =>
+AssemblyLoadContext.Default.Resolving += (context, assemblyName) =>
 {
-    e.Cancel = true;
-    server.Stop();
-    ServerLogger.Close();
+    if (assemblyName.Name is null)
+        return null;
+
+    // Resolves assemblies from the server directory, then the game install.
+    string local = Path.Combine(AppContext.BaseDirectory, assemblyName.Name + ".dll");
+    if (File.Exists(local))
+        return context.LoadFromAssemblyPath(local);
+
+    string fromGame = Path.Combine(gameDir, assemblyName.Name + ".dll");
+    return File.Exists(fromGame) ? context.LoadFromAssemblyPath(fromGame) : null;
 };
 
-if (server.Start())
-{
-    server.Run();
-}
-else
-{
-    ServerLogger.Log("FATAL: Failed to start server");
-    Environment.Exit(1);
-}
-
-ServerLogger.Close();
+return ServerHost.Run(args);

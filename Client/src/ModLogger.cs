@@ -1,27 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 
 namespace KSA.Mods.Multiplayer
 {
-    /// <summary>
-    /// Centralized logging for the multiplayer mod.
-    /// Logs are stored in a "logs" subdirectory next to the mod DLL.
-    /// Log filenames include the player name for easy identification.
-    /// 
-    /// Log files per our architecture:
-    /// - Subspace.log: Current subspace ID, time offsets, subspace changes
-    /// - Sync.log: Sync events, orbital state when syncing, timestamps
-    /// - Players.log: Connected players, their subspaces, join/leave events
-    /// - Network.log: Latency per player, connection status changes
-    /// - Vehicles.log: Remote vehicles created/destroyed, count
-    /// - Events.log: Maneuvers detected, animations detected, what triggered resyncs
-    /// - GOTO.log: Teleport attempts, source state, target state, distance offset
-    /// - Renderer.log: Vehicle creation/destruction, orbit corrections
-    /// - Patches.log: Harmony patch activity
-    /// - NameTags.log: Nametag rendering
-    /// </summary>
+    /// <summary>Writes per-category log files for the multiplayer mod.</summary>
     public static class ModLogger
     {
         private static string? _logDirectory;
@@ -36,19 +19,62 @@ namespace KSA.Mods.Multiplayer
         private const int THROTTLE_EVERY_N = 100; // Log every Nth message for throttled categories
         private const double THROTTLE_MIN_INTERVAL_MS = 1000; // Or at least once per second
         
-        /// <summary>
-        /// Gets or sets the player name used in log filenames.
-        /// Should be set early during initialization.
-        /// </summary>
+        /// <summary>Gets or sets the player name used in log filenames.</summary>
         public static string PlayerName
         {
             get => _playerName ?? "Unknown";
             set => _playerName = SanitizeFileName(value);
         }
         
-        /// <summary>
-        /// Gets the log directory path, creating it if necessary.
-        /// </summary>
+        /// <summary>Returns the KSA_MP_LOGS directory if it exists, otherwise an empty string.</summary>
+        private static string SharedLogDirectory()
+        {
+            try
+            {
+                string? shared = Environment.GetEnvironmentVariable("KSA_MP_LOGS");
+                if (string.IsNullOrWhiteSpace(shared)) return string.Empty;
+                return Directory.Exists(shared) ? shared : string.Empty;
+            }
+            catch { return string.Empty; }
+        }
+
+        private static string AssemblyDirectory()
+        {
+            try
+            {
+                return Path.GetDirectoryName(
+                    System.Reflection.Assembly.GetExecutingAssembly().Location) ?? string.Empty;
+            }
+            catch { return string.Empty; }
+        }
+
+        /// <summary>Returns the logs subdirectory of the first candidate a test file can be written in.</summary>
+        private static string FirstWritable(params string[] candidates)
+        {
+            foreach (string candidate in candidates)
+            {
+                if (string.IsNullOrEmpty(candidate)) continue;
+
+                try
+                {
+                    string dir = candidate.EndsWith("logs") ? candidate : Path.Combine(candidate, "logs");
+                    Directory.CreateDirectory(dir);
+
+                    string probe = Path.Combine(dir, ".writetest");
+                    File.WriteAllText(probe, "x");
+                    File.Delete(probe);
+                    return dir;
+                }
+                catch
+                {
+                    // Not writable - try the next one.
+                }
+            }
+
+            return Path.Combine(Path.GetTempPath(), "KSA-Multiplayer-logs");
+        }
+
+        /// <summary>Gets the log directory path, creating it if necessary.</summary>
         public static string LogDirectory
         {
             get
@@ -59,13 +85,14 @@ namespace KSA.Mods.Multiplayer
                     {
                         if (_logDirectory == null)
                         {
-                            string? assemblyLocation = Assembly.GetExecutingAssembly().Location;
-                            string? modDirectory = Path.GetDirectoryName(assemblyLocation);
-                            
-                            if (string.IsNullOrEmpty(modDirectory))
-                                modDirectory = Environment.CurrentDirectory;
-                            
-                            _logDirectory = Path.Combine(modDirectory, "logs");
+                            // Pick the first writable location from the candidate list.
+                            _logDirectory = FirstWritable(
+                                SharedLogDirectory(),
+                                AssemblyDirectory(),
+                                Path.Combine(Environment.CurrentDirectory, "logs"),
+                                Path.Combine(
+                                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                                    "KSA-Multiplayer"));
                             
                             try
                             {
@@ -74,7 +101,7 @@ namespace KSA.Mods.Multiplayer
                             }
                             catch
                             {
-                                // If we can't create logs directory, logging will silently fail
+                                // Ignore failure to create the log directory.
                             }
                         }
                     }
@@ -104,10 +131,56 @@ namespace KSA.Mods.Multiplayer
             return Path.Combine(LogDirectory, $"{logName}_{PlayerName}.log");
         }
         
-        /// <summary>
-        /// Writes a timestamped message to the specified log file.
-        /// Respects EnableDebugLogging setting.
-        /// </summary>
+        /// <summary>One open, buffered writer per log file.</summary>
+        private static readonly Dictionary<string, StreamWriter> _writers = new();
+        private static DateTime _lastFlush = DateTime.MinValue;
+        private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(2);
+
+        private static void WriteLine(string logName, string message)
+        {
+            try
+            {
+                string timestamped = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
+
+                lock (_lock)
+                {
+                    if (!_writers.TryGetValue(logName, out StreamWriter? writer))
+                    {
+                        writer = new StreamWriter(GetLogPath(logName), append: true) { AutoFlush = false };
+                        _writers[logName] = writer;
+                    }
+
+                    writer.WriteLine(timestamped);
+
+                    // Flush every writer once per interval.
+                    DateTime now = DateTime.UtcNow;
+                    if (now - _lastFlush >= FlushInterval)
+                    {
+                        _lastFlush = now;
+                        foreach (StreamWriter w in _writers.Values)
+                            w.Flush();
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore logging failures.
+            }
+        }
+
+        /// <summary>Flushes and closes every writer.</summary>
+        public static void Shutdown()
+        {
+            lock (_lock)
+            {
+                foreach (StreamWriter w in _writers.Values)
+                {
+                    try { w.Flush(); w.Dispose(); } catch { }
+                }
+                _writers.Clear();
+            }
+        }
+
         public static void Log(string logName, string message)
         {
             // Check if logging is enabled
@@ -116,39 +189,76 @@ namespace KSA.Mods.Multiplayer
             
             try
             {
-                string logPath = GetLogPath(logName);
-                string timestampedMessage = $"[{DateTime.Now:HH:mm:ss.fff}] {message}\n";
-                File.AppendAllText(logPath, timestampedMessage);
+                WriteLine(logName, message);
             }
             catch
             {
-                // Silently fail if we can't write logs
+                // Ignore log write failures.
             }
         }
         
         /// <summary>
-        /// Always logs regardless of EnableDebugLogging setting.
-        /// Use for critical errors only.
+        /// Logs at most once per interval per key, ignoring EnableDebugLogging.
         /// </summary>
-        public static void LogAlways(string logName, string message)
+        /// <remarks>
+        /// Reserved for anomalies a player must be able to report even with
+        /// debug logging switched off: non-finite state, a probe that threw, a
+        /// vessel the renderer could not place. Routine telemetry belongs in
+        /// <see cref="LogThrottledEvery"/>, which the setting silences.
+        /// </remarks>
+        public static void LogThrottledAlways(string logName, string key, string message,
+                                              double minIntervalSeconds = 3.0)
+        {
+            WriteThrottled(logName, key, message, minIntervalSeconds);
+        }
+
+        /// <summary>
+        /// Logs at most once per interval per key, honouring EnableDebugLogging.
+        /// </summary>
+        public static void LogThrottledEvery(string logName, string key, string message,
+                                             double minIntervalSeconds = 3.0)
+        {
+            if (!MultiplayerSettings.Current.EnableDebugLogging)
+                return;
+
+            WriteThrottled(logName, key, message, minIntervalSeconds);
+        }
+
+        /// <summary>Shared interval throttle behind the two entry points above.</summary>
+        private static void WriteThrottled(string logName, string key, string message,
+                                           double minIntervalSeconds)
         {
             try
             {
-                string logPath = GetLogPath(logName);
-                string timestampedMessage = $"[{DateTime.Now:HH:mm:ss.fff}] {message}\n";
-                File.AppendAllText(logPath, timestampedMessage);
+                string fullKey = logName + "|" + key;
+                DateTime now = DateTime.Now;
+
+                lock (_lock)
+                {
+                    if (_lastLogTimes.TryGetValue(fullKey, out DateTime last) &&
+                        (now - last).TotalSeconds < minIntervalSeconds)
+                    {
+                        return;
+                    }
+                    _lastLogTimes[fullKey] = now;
+                }
+
+                WriteLine(logName, message);
             }
             catch { }
         }
 
-        /// <summary>
-        /// Throttled logging - only logs every Nth message or at minimum interval.
-        /// Use for high-frequency messages like per-frame network traffic.
-        /// </summary>
-        /// <param name="logName">Log file category</param>
-        /// <param name="throttleKey">Unique key for throttling (e.g., "STATE_RECV")</param>
-        /// <param name="message">Message to log</param>
-        /// <param name="forceLog">If true, bypasses throttling</param>
+        /// <summary>Always logs regardless of EnableDebugLogging.</summary>
+        public static void LogAlways(string logName, string message)
+        {
+            try
+            {
+                WriteLine(logName, message);
+            }
+            catch { }
+        }
+
+        /// <summary>Logs every Nth message or once per minimum interval.</summary>
         public static void LogThrottled(string logName, string throttleKey, string message, bool forceLog = false)
         {
             if (!MultiplayerSettings.Current.EnableDebugLogging)
@@ -191,20 +301,15 @@ namespace KSA.Mods.Multiplayer
                     _lastLogTimes[fullKey] = now;
                     try
                     {
-                        string logPath = GetLogPath(logName);
                         string throttleInfo = forceLog ? "" : $" (#{count})";
-                        string timestampedMessage = $"[{now:HH:mm:ss.fff}]{throttleInfo} {message}\n";
-                        File.AppendAllText(logPath, timestampedMessage);
+                        WriteLine(logName, $"{throttleInfo} {message}".TrimStart());
                     }
                     catch { }
                 }
             }
         }
 
-        /// <summary>
-        /// Logs a periodic heartbeat with current state snapshot.
-        /// Call this from Update loop - it self-limits to HEARTBEAT_INTERVAL.
-        /// </summary>
+        /// <summary>Logs a state snapshot at most once per HEARTBEAT_INTERVAL.</summary>
         public static void LogHeartbeat(double currentTime)
         {
             if (!MultiplayerSettings.Current.EnableDebugLogging)
@@ -224,12 +329,6 @@ namespace KSA.Mods.Multiplayer
             var syncManager = manager.SyncManager;
             var vehicleRenderer = manager.VehicleRenderer;
             
-            // Subspace heartbeat
-            if (subspaceManager != null)
-            {
-                Log("Subspace", $"HEARTBEAT: Subspace={subspaceManager.CurrentSubspace}, HasSync={subspaceManager.HasInitialSync}");
-            }
-            
             // Sync heartbeat
             if (syncManager != null)
             {
@@ -245,38 +344,19 @@ namespace KSA.Mods.Multiplayer
             // Network heartbeat
             Log("Network", $"HEARTBEAT: Connected={manager.IsConnected}, IsHost={manager.IsHost}, Players={manager.ConnectedPlayers.Count}");
             
-            // Players heartbeat
+            // Players heartbeat: how far each player's clock is from ours.
             if (subspaceManager != null)
             {
                 foreach (var player in manager.ConnectedPlayers)
                 {
-                    int ps = subspaceManager.GetPlayerSubspace(player);
-                    Log("Players", $"HEARTBEAT: {player} in Subspace {ps}");
+                    if (player == manager.LocalPlayerName) continue;
+                    double diff = subspaceManager.GetTimeDifference(player);
+                    Log("Players", $"HEARTBEAT: {player} is {diff:+0.0;-0.0}s from us");
                 }
             }
         }
         
-        /// <summary>
-        /// Clears all log files in the log directory for this player.
-        /// </summary>
-        public static void ClearAllLogs()
-        {
-            try
-            {
-                if (Directory.Exists(LogDirectory))
-                {
-                    foreach (var file in Directory.GetFiles(LogDirectory, $"*_{PlayerName}.log"))
-                    {
-                        File.Delete(file);
-                    }
-                }
-            }
-            catch { }
-        }
-        
-        /// <summary>
-        /// Clears all log files in the log directory regardless of player name.
-        /// </summary>
+        /// <summary>Deletes every log file in the log directory.</summary>
         public static void ClearAllLogsGlobal()
         {
             try

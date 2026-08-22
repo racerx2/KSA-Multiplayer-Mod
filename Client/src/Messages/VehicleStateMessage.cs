@@ -12,19 +12,25 @@ namespace KSA.Mods.Multiplayer.Messages
         
         public string VehicleId { get; set; } = string.Empty;
         public string OwnerPlayerName { get; set; } = string.Empty;
+
+        /// <summary>Stable vessel identity in the form "{creator}|{localId}".</summary>
+        public string VesselUid { get; set; } = string.Empty;
+
+        /// <summary>True only for the vessel its owner is currently flying.</summary>
+        public bool IsControlled { get; set; }
+
         public string ParentBodyId { get; set; } = string.Empty;
         
-        /// <summary>
-        /// The sender's local simulation time when this state was captured.
-        /// </summary>
+        /// <summary>The sender's local simulation time when this state was captured.</summary>
         public double StateTimeSeconds { get; set; }
         
-        /// <summary>
-        /// The server's authoritative simulation time when this state was captured.
-        /// </summary>
+        /// <summary>The server's simulation time when this state was captured.</summary>
         public double ServerTimeSeconds { get; set; }
+
+        /// <summary>The sender's simulation speed when this state was sampled.</summary>
+        public double SimulationSpeed { get; set; } = 1.0;
         
-        // CCI coordinates (used for Freefall/Maneuvering)
+        // CCI position and velocity.
         public double PositionCciX { get; set; }
         public double PositionCciY { get; set; }
         public double PositionCciZ { get; set; }
@@ -33,7 +39,7 @@ namespace KSA.Mods.Multiplayer.Messages
         public double VelocityCciY { get; set; }
         public double VelocityCciZ { get; set; }
         
-        // CCF coordinates (used for Landed/Floating/Rolling/Sailing)
+        // CCF position and velocity.
         public double PositionCcfX { get; set; }
         public double PositionCcfY { get; set; }
         public double PositionCcfZ { get; set; }
@@ -42,10 +48,10 @@ namespace KSA.Mods.Multiplayer.Messages
         public double VelocityCcfY { get; set; }
         public double VelocityCcfZ { get; set; }
         
-        // Physics frame: 0 = CCI, 1 = CCF
+        // Physics frame: 0 = CCI, 1 = CCF.
         public byte PhysFrame { get; set; }
         
-        // Orientation (Body2Cci for orbital, Body2Ccf for surface)
+        // Orientation quaternion in the physics frame.
         public double OrientationX { get; set; }
         public double OrientationY { get; set; }
         public double OrientationZ { get; set; }
@@ -60,20 +66,15 @@ namespace KSA.Mods.Multiplayer.Messages
         public uint ThrusterFlags { get; set; }
         public bool IsManeuvering { get; set; }
         
-        /// <summary>
-        /// KSA Situation: 0=Freefall, 1=Maneuvering, 2=Rolling, 3=Landed, 4=Sailing, 5=Floating
-        /// </summary>
+        /// <summary>KSA Situation: 0=Freefall, 1=Maneuvering, 2=Rolling, 3=Landed, 4=Sailing, 5=Floating.</summary>
         public byte Situation { get; set; }
         
-        /// <summary>
-        /// KSA VehicleRegion: 0=Surface (atmosphere/near-surface), 1=LowOrbit, 2=HighOrbit
-        /// When Surface, receiver should enable physics simulation for atmospheric drag.
-        /// </summary>
+        /// <summary>KSA VehicleRegion: 0=Surface, 1=LowOrbit, 2=HighOrbit.</summary>
         public byte VehicleRegion { get; set; }
         
         public uint SequenceNumber { get; set; }
         
-        // Rocket thrust states for visual sync
+        // Per-rocket thrust levels.
         public float[] RocketThrusts { get; set; } = Array.Empty<float>();
         
         [MemoryPackConstructor]

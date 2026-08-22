@@ -1,24 +1,23 @@
 namespace KSA.Mods.Multiplayer
 {
-    /// <summary>
-    /// Central location for mod metadata - version, author, links.
-    /// Update this file when releasing new versions.
-    /// </summary>
+    /// <summary>Holds the mod's name, version, author, licence and links.</summary>
     public static class ModInfo
     {
         public const string Name = "KSA Multiplayer Mod";
-        public const string Version = "0.2.0";
+        public const string Version = "0.3.0";
         public const string Author = "RacerX";
+
+        /// <summary>Copyright line shown in the About panel.</summary>
+        public const string Copyright = "Copyright (c) 2025 RacerX";
+
+        /// <summary>Licence this mod is distributed under.</summary>
+        public const string License = "PolyForm Noncommercial License 1.0.0";
         public const string GitHubUrl = "https://github.com/racerx2/KSA-Multiplayer-Mod";
         
-        /// <summary>
-        /// Full display string for UI: "KSA Multiplayer Mod v0.1.0"
-        /// </summary>
+        /// <summary>Mod name with version, for UI display.</summary>
         public static string FullName => $"{Name} v{Version}";
         
-        /// <summary>
-        /// Window title string: "Multiplayer v0.1.0"
-        /// </summary>
+        /// <summary>Short name with version, for the window title.</summary>
         public static string WindowTitle => $"Multiplayer v{Version}";
     }
 }

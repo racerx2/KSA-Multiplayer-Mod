@@ -4,24 +4,25 @@ using KSA.Networking.Messages;
 
 namespace KSA.Mods.Multiplayer.Messages
 {
-    /// <summary>
-    /// Message sent by host to verify client is using the same solar system configuration.
-    /// Sent immediately after a client connects.
-    /// </summary>
+    /// <summary>Carries the host's solar system configuration to a connecting client.</summary>
     [MemoryPackable]
     public partial class SystemCheckMessage : GameMessage
     {
-        /// <summary>
-        /// The system ID from SystemLibrary.Default (e.g., "SolarSystem", "EarthMoon", "EarthOnly")
-        /// </summary>
+        /// <summary>The host's system ID from SystemLibrary.Default.</summary>
         [MemoryPackOrder(0)]
         public string HostSystemId { get; set; } = string.Empty;
         
-        /// <summary>
-        /// The display name of the system (e.g., "Solar System", "Earth and Moon", "Earth Only")
-        /// </summary>
+        /// <summary>The display name of the host's system.</summary>
         [MemoryPackOrder(1)]
         public string HostSystemDisplayName { get; set; } = string.Empty;
+        
+        /// <summary>The host's mod version, for comparison against the client's.</summary>
+        [MemoryPackOrder(2)]
+        public string HostModVersion { get; set; } = string.Empty;
+        
+        /// <summary>The game type the host expects: "Sandbox" or "Testing".</summary>
+        [MemoryPackOrder(3)]
+        public string HostGameType { get; set; } = string.Empty;
         
         [MemoryPackConstructor]
         public SystemCheckMessage() : base((GameMessageId)NetworkPatches.MSG_ID_SYSTEM_CHECK)
@@ -36,7 +37,7 @@ namespace KSA.Mods.Multiplayer.Messages
         
         public override void Execute()
         {
-            // Handled by NetworkPatches.DeserialisePrefix
+            // Does nothing; handled during deserialisation.
         }
     }
 }

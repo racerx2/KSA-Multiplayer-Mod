@@ -4,28 +4,19 @@ using Brutal.Logging;
 
 namespace KSA.Mods.Multiplayer
 {
-    /// <summary>
-    /// StarMap mod loader entry point.
-    /// This allows the mod to be loaded by StarMap in addition to native KSA loading.
-    /// Uses attribute-based lifecycle hooks as per StarMap API.
-    /// </summary>
+    /// <summary>Entry point that lets StarMap load the mod.</summary>
     [StarMapMod]
     public class StarMapEntry
     {
-        /// <summary>
-        /// Called immediately when the mod is loaded.
-        /// </summary>
+        /// <summary>Logs that the mod was loaded.</summary>
         [StarMapImmediateLoad]
         public void Init(Mod definingMod)
         {
             DefaultCategory.Log.Info("StarMap: ImmediateLoad called", "Init", nameof(StarMapEntry));
-            // Don't initialize yet - wait for AllModsLoaded
+            // Initialization happens in AllModsLoaded.
         }
         
-        /// <summary>
-        /// Called after all mods are loaded.
-        /// This is where we initialize the multiplayer system.
-        /// </summary>
+        /// <summary>Initializes the multiplayer system once all mods are loaded.</summary>
         [StarMapAllModsLoaded]
         public void AllModsLoaded()
         {
@@ -33,18 +24,14 @@ namespace KSA.Mods.Multiplayer
             ModEntry.Initialize();
         }
         
-        /// <summary>
-        /// Called every frame after GUI rendering.
-        /// </summary>
+        /// <summary>Updates the mod each frame after GUI rendering.</summary>
         [StarMapAfterGui]
         public void AfterGui(double dt)
         {
             ModEntry.Update(dt);
         }
         
-        /// <summary>
-        /// Called when the mod is unloaded.
-        /// </summary>
+        /// <summary>Shuts the mod down when it is unloaded.</summary>
         [StarMapUnload]
         public void Unload()
         {

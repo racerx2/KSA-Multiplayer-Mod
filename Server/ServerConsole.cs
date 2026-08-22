@@ -109,6 +109,8 @@ namespace KSA.Multiplayer.DedicatedServer
                 Console.WriteLine("  ban <name>        - Ban a player (by IP)");
                 Console.WriteLine("  unban <ip>        - Unban an IP address");
                 Console.WriteLine("  banlist           - Show banned IPs");
+                Console.WriteLine("  craft list        - List shared craft");
+                Console.WriteLine("  craft remove <n>  - Delete a shared craft");
                 Console.WriteLine("  stop              - Shutdown the server");
                 Console.ResetColor();
                 Console.WriteLine();

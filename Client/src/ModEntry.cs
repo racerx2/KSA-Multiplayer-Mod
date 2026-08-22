@@ -6,7 +6,7 @@ namespace KSA.Mods.Multiplayer
     public class ModEntry
     {
         public static string ModName => "KSA Multiplayer";
-        public static string ModVersion => "1.0.0";
+        public static string ModVersion => ModInfo.Version;
         
         private static bool _isInitialized = false;
         private static MultiplayerManager? _multiplayerManager;
@@ -18,23 +18,28 @@ namespace KSA.Mods.Multiplayer
             
             try
             {
-                // Load settings FIRST so we have the player name for logging
+                // Loads the mod settings.
                 MultiplayerSettings.Load();
                 
-                // Set the player name for log files BEFORE any logging happens
+                // Sets the player name used in log file names.
                 ModLogger.PlayerName = MultiplayerSettings.Current.DefaultPlayerName;
                 
-                // Apply patches FIRST before any managers are created
+                // Applies the Harmony patches.
                 try { NetworkPatches.ApplyPatches(); }
                 catch (Exception ex) { DefaultCategory.Log.Warning($"Network patches failed: {ex.Message}", "Initialize", nameof(ModEntry)); }
                 
+                try { VesselStructure.ApplyPatches(); }
+                catch (Exception ex) { DefaultCategory.Log.Warning($"Structure patches failed: {ex.Message}", "Initialize", nameof(ModEntry)); }
+
                 try { VehiclePatches.ApplyPatches(); }
                 catch (Exception ex) { DefaultCategory.Log.Warning($"Vehicle patches failed: {ex.Message}", "Initialize", nameof(ModEntry)); }
+
                 
                 _multiplayerManager = new MultiplayerManager();
                 _multiplayerManager.Initialize();
                 
                 _multiplayerWindow = new MultiplayerWindow(_multiplayerManager, new Brutal.Numerics.float2(600f, 400f));
+                _multiplayerWindow.SetShown(true);
                 
                 MultiplayerCommands.RegisterCommands();
                 
@@ -55,6 +60,10 @@ namespace KSA.Mods.Multiplayer
             MultiplayerSettings.Save();
             NetworkPatches.RemovePatches();
             VehiclePatches.RemovePatches();
+            VesselStructure.RemovePatches();
+
+            // Flushes and closes the log writers.
+            ModLogger.Shutdown();
             _multiplayerManager?.Shutdown();
             _multiplayerManager = null;
             _isInitialized = false;
@@ -62,8 +71,12 @@ namespace KSA.Mods.Multiplayer
         
         public static void Update(double deltaTime)
         {
-            if (_isInitialized)
-                _multiplayerManager?.Update(deltaTime);
+            if (!_isInitialized) return;
+
+            _multiplayerManager?.Update(deltaTime);
+
+            // Draws the multiplayer window.
+            _multiplayerWindow?.Draw(Program.MainViewport);
         }
         
         public static MultiplayerManager? GetMultiplayerManager() => _multiplayerManager;
