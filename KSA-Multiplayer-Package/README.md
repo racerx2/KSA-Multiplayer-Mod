@@ -2,7 +2,7 @@
 
 ![KSA Multiplayer](title.png)
 
-Multiplayer mod for Kitten Space Agency v3103+
+Multiplayer mod for Kitten Space Agency v2026.8.19.5261+
 
 ## Requirements
 
@@ -13,7 +13,7 @@ Multiplayer mod for Kitten Space Agency v3103+
 ## Installation
 
 ### Option 1: Installer (Recommended)
-1. Run `KSA-Multiplayer-Setup-v0.3.0.exe`.
+1. Run `KSA-Multiplayer-Setup-v0.4.0.exe`.
 2. Select your KSA installation folder.
 3. Start the game using the **KSA with Mods** desktop shortcut.
 
@@ -138,11 +138,11 @@ KSA-Multiplayer-Package/
 
 ## Version History
 
-### v0.3.0 (Current)
+### v0.4.0 (Current)
 
-Successor to v0.2.1, the last published release. Consolidates all work since,
-including changes previously listed under 0.3.x and 0.4.x numbers that were
-never released from this repository. See CHANGELOG.md for the full list.
+Successor to v0.2.1, the last published release. Consolidates every change
+since. The wire format is not compatible with 0.2.1, so the client and the
+server must both be on this build. See CHANGELOG.md for the full list.
 
 - Cross-player docking, with control handed to the initiator and returned on
   undock; ownership and each player's camera stay with their own craft

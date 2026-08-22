@@ -5,11 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2026-08-22
+## [0.4.0] - 2026-08-22
 
-Successor to v0.2.1, the last published release. Consolidates all work done
-since, including changes previously listed under 0.3.x and 0.4.x version
-numbers that were never released from this repository.
+Successor to v0.2.1, the last published release. Consolidates every change
+since, the repository having carried no releases in between. The minor version
+is stepped because the wire format is not compatible with 0.2.1: both the
+client and the server must be on this build.
 
 ### Added
 - Empty authoritative shared universe with late-join design and state replay
@@ -51,7 +52,7 @@ numbers that were never released from this repository.
 - `LogDockingReadout` setting, off by default, for the per-frame docking trace
 
 ### Changed
-- Ported the client and server to KSA v2026.7.8
+- Ported the client and server to KSA v2026.8.19.5261
 - Docking control model: the player who initiates a dock takes control of the
   merged vessel; the other keeps ownership and their camera, and control is
   handed back on undock

@@ -4,7 +4,7 @@ namespace KSA.Mods.Multiplayer
     public static class ModInfo
     {
         public const string Name = "KSA Multiplayer Mod";
-        public const string Version = "0.3.0";
+        public const string Version = "0.4.0";
         public const string Author = "RacerX";
 
         /// <summary>Copyright line shown in the About panel.</summary>

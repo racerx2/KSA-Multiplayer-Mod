@@ -30,7 +30,7 @@ This project uses a **dedicated server** architecture:
 
 ## Requirements
 
-- Kitten Space Agency v3103 or compatible
+- Kitten Space Agency v2026.8.19.5261 or compatible
 - Windows 10 or later
 - Internet access during installation
 
@@ -43,7 +43,7 @@ runtime, so players do not need to maintain either dependency separately.
 
 ### Using the Installer (Recommended)
 
-1. Download `KSA-Multiplayer-Setup-v0.3.0.exe` from [Releases](https://github.com/racerx2/KSA-Multiplayer-Mod/releases).
+1. Download `KSA-Multiplayer-Setup-v0.4.0.exe` from [Releases](https://github.com/racerx2/KSA-Multiplayer-Mod/releases).
 2. Run the installer and select your KSA installation folder.
 3. Launch the game using the **KSA with Mods** desktop shortcut.
 
@@ -86,7 +86,7 @@ automatically, including its private .NET runtime.
 2. The server will start and display:
    ```
    ╔══════════════════════════════════════════╗
-   ║      KSA DEDICATED SERVER v0.3.0         ║
+   ║      KSA DEDICATED SERVER v0.4.0         ║
    ╚══════════════════════════════════════════╝
    Server: KSA Multiplayer Server
    Port: 7777, Max Players: 8
