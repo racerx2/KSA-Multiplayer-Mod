@@ -2,6 +2,8 @@
 
 ![KSA Multiplayer](title.png)
 
+[![Discord](https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/qZ6qjNZ8hz)
+
 A multiplayer modification for Kitten Space Agency (KSA) that enables real-time cooperative gameplay. Players can see each other's spacecraft during orbital missions, maneuvers, and surface operations.
 
 ## Architecture
@@ -359,6 +361,12 @@ Required Notice: Copyright (c) 2025 RacerX (https://github.com/racerx2)
 - **Author and maintainer:** RacerX ([@racerx2](https://github.com/racerx2))
 
 KSA Multiplayer is created and maintained by RacerX.
+
+## Community
+
+- **[Discord](https://discord.gg/qZ6qjNZ8hz)** - find people to fly with, get help, share what you built
+- **[Discussions](https://github.com/racerx2/KSA-Multiplayer-Mod/discussions)** - questions, ideas, show and tell
+- **[Issues](https://github.com/racerx2/KSA-Multiplayer-Mod/issues)** - bug reports
 
 ## Contributing
 
